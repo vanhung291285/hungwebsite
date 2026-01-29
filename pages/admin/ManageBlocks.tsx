@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DisplayBlock } from '../../types';
 import { DatabaseService } from '../../services/database';
@@ -27,8 +28,13 @@ export const ManageBlocks: React.FC = () => {
   ];
 
   useEffect(() => {
-    DatabaseService.getBlocks().then(res => setBlocks(res.sort((a, b) => a.order - b.order)));
+    loadBlocks();
   }, []);
+
+  const loadBlocks = async () => {
+      const res = await DatabaseService.getBlocks();
+      setBlocks(res.sort((a, b) => a.order - b.order));
+  };
 
   const handleAdd = async () => {
     if (!newBlock.name) return alert("Vui lòng nhập tên khối");
@@ -50,14 +56,14 @@ export const ManageBlocks: React.FC = () => {
     };
     
     await DatabaseService.saveBlock(block);
-    setBlocks(prev => [...prev, block]);
+    await loadBlocks(); // Reload to get real ID
     setNewBlock({ type: 'grid', position: 'main', itemCount: 4, isVisible: true, name: '', targetPage: 'all', htmlContent: 'all' });
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Xóa khối này? Hành động không thể hoàn tác.")) {
       await DatabaseService.deleteBlock(id);
-      setBlocks(prev => prev.filter(b => b.id !== id));
+      await loadBlocks();
     }
   };
 
@@ -87,10 +93,11 @@ export const ManageBlocks: React.FC = () => {
     samePosBlocks.forEach((b, idx) => { b.order = idx + 1; });
 
     const otherBlocks = blocks.filter(b => b.position !== block.position);
-    const newGlobalBlocks = [...otherBlocks, ...samePosBlocks];
+    // Optimistic Update
+    setBlocks([...otherBlocks, ...samePosBlocks]);
 
     await DatabaseService.saveBlocksOrder(samePosBlocks); // Only save changed ones
-    setBlocks(newGlobalBlocks);
+    // No need to reload full list unless we suspect concurrency issues, optimistic is fine for order
   };
 
   const startEditContent = (block: DisplayBlock) => {
@@ -101,7 +108,7 @@ export const ManageBlocks: React.FC = () => {
   const saveContent = async (block: DisplayBlock) => {
      const updatedBlock = { ...block, htmlContent: tempContent };
      await DatabaseService.saveBlock(updatedBlock);
-     setBlocks(prev => prev.map(b => b.id === block.id ? updatedBlock : b));
+     await loadBlocks();
      setEditingContentId(null);
   };
 

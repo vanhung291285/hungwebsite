@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { MenuItem } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { List, Save, Plus, Trash2, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
+import { List, Save, Plus, Trash2, ArrowUp, ArrowDown, ExternalLink, Loader2 } from 'lucide-react';
 
 interface ManageMenuProps {
    refreshData: (showLoader?: boolean) => void;
@@ -10,6 +10,7 @@ interface ManageMenuProps {
 
 export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   // State for new item
   const [newLabel, setNewLabel] = useState('');
@@ -18,13 +19,20 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
   const [newExternalUrl, setNewExternalUrl] = useState('');
 
   useEffect(() => {
-     DatabaseService.getMenu().then(items => setMenuItems(items.sort((a,b) => a.order - b.order)));
+     loadMenu();
   }, []);
+
+  const loadMenu = async () => {
+      setIsLoading(true);
+      const items = await DatabaseService.getMenu();
+      setMenuItems(items.sort((a,b) => a.order - b.order));
+      setIsLoading(false);
+  };
 
   const systemPaths = [
      { label: 'Trang chủ', path: 'home' },
      { label: 'Giới thiệu', path: 'intro' },
-     { label: 'Danh sách cán bộ', path: 'staff' }, // Added new path
+     { label: 'Danh sách cán bộ', path: 'staff' }, 
      { label: 'Tin tức & Sự kiện', path: 'news' },
      { label: 'Văn bản - Hồ sơ', path: 'documents' },
      { label: 'Tài liệu học tập', path: 'resources' },
@@ -34,7 +42,8 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
 
   const handleSaveAll = async () => {
     await DatabaseService.saveMenu(menuItems);
-    refreshData(false); // Silent refresh
+    await loadMenu(); // Reload real IDs
+    refreshData(false); // Update App state
     alert("Đã lưu cấu hình Menu và cập nhật ra trang chủ!");
   };
 
@@ -52,9 +61,10 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
      };
 
      const updatedList = [...menuItems, newItem];
-     setMenuItems(updatedList);
+     setMenuItems(updatedList); // Optimistic UI update
      
      await DatabaseService.saveMenu(updatedList);
+     await loadMenu(); // Get real IDs
      refreshData(false);
 
      setNewLabel('');
@@ -63,10 +73,8 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
 
   const handleDelete = async (id: string) => {
      if (confirm("Bạn có chắc chắn muốn xóa menu này?")) {
-        const updatedList = menuItems.filter(i => i.id !== id);
-        setMenuItems(updatedList);
-        
         await DatabaseService.deleteMenu(id);
+        await loadMenu();
         refreshData(false);
      }
   };
@@ -87,13 +95,14 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
       setMenuItems(reordered);
       
       await DatabaseService.saveMenu(reordered);
+      await loadMenu(); // Reload to be safe
       refreshData(false);
   };
 
   return (
     <div className="space-y-6">
        <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded text-sm text-teal-800">
-        <strong>Module Menu:</strong> Thêm, xóa, sắp xếp các mục hiển thị trên thanh điều hướng chính. Dữ liệu sẽ <strong>tự động lưu</strong> khi Thêm/Xóa/Sắp xếp.
+        <strong>Module Menu:</strong> Thêm, xóa, sắp xếp các mục hiển thị trên thanh điều hướng chính.
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -188,6 +197,7 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
                   </button>
                </div>
 
+               {isLoading ? <div className="p-4 text-center"><Loader2 className="animate-spin inline"/> Đang tải...</div> : (
                <div className="space-y-2">
                   {menuItems.length === 0 && <p className="text-gray-500 italic text-center py-4">Chưa có menu nào.</p>}
                   
@@ -229,6 +239,7 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
                     </div>
                   ))}
                </div>
+               )}
             </div>
          </div>
       </div>

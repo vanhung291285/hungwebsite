@@ -1,8 +1,8 @@
 
 -- Chạy toàn bộ Script này trong SQL Editor của Supabase để tạo cấu trúc bảng
 
--- 1. Bảng Cấu hình trường học (Lưu 1 dòng duy nhất)
-CREATE TABLE school_config (
+-- 1. Bảng Cấu hình trường học
+CREATE TABLE IF NOT EXISTS school_config (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   name TEXT,
   slogan TEXT,
@@ -24,23 +24,25 @@ CREATE TABLE school_config (
   meta_description TEXT
 );
 
--- Insert dữ liệu mặc định
-INSERT INTO school_config (name, slogan, primary_color) VALUES ('Trường Mẫu', 'Dạy tốt - Học tốt', '#1e3a8a');
+-- Insert dữ liệu mặc định nếu chưa có
+INSERT INTO school_config (name, slogan, primary_color) 
+SELECT 'Trường Mẫu', 'Dạy tốt - Học tốt', '#1e3a8a'
+WHERE NOT EXISTS (SELECT 1 FROM school_config);
 
 -- 2. Bảng Danh mục tài liệu
-CREATE TABLE document_categories (
+CREATE TABLE IF NOT EXISTS document_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
   description TEXT,
-  order_index INTEGER DEFAULT 0, -- Added order column
+  order_index INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. Bảng Tài liệu
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  number TEXT, -- Số hiệu
+  number TEXT, 
   title TEXT NOT NULL,
   date DATE DEFAULT CURRENT_DATE,
   download_url TEXT,
@@ -49,7 +51,7 @@ CREATE TABLE documents (
 );
 
 -- 4. Bảng Tin tức / Bài viết
-CREATE TABLE posts (
+CREATE TABLE IF NOT EXISTS posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   slug TEXT,
@@ -64,17 +66,14 @@ CREATE TABLE posts (
   status TEXT DEFAULT 'published',
   is_featured BOOLEAN DEFAULT false,
   show_on_home BOOLEAN DEFAULT true,
-  
-  -- Lưu mảng JSON
   tags JSONB DEFAULT '[]'::jsonb, 
   block_ids JSONB DEFAULT '[]'::jsonb,
   attachments JSONB DEFAULT '[]'::jsonb,
-  
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 5. Bảng Albums Ảnh
-CREATE TABLE gallery_albums (
+CREATE TABLE IF NOT EXISTS gallery_albums (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
@@ -84,7 +83,7 @@ CREATE TABLE gallery_albums (
 );
 
 -- 6. Bảng Ảnh trong Album
-CREATE TABLE gallery_images (
+CREATE TABLE IF NOT EXISTS gallery_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   url TEXT NOT NULL,
   caption TEXT,
@@ -93,7 +92,7 @@ CREATE TABLE gallery_images (
 );
 
 -- 7. Bảng Menu
-CREATE TABLE menu_items (
+CREATE TABLE IF NOT EXISTS menu_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   label TEXT NOT NULL,
   path TEXT NOT NULL,
@@ -101,7 +100,7 @@ CREATE TABLE menu_items (
 );
 
 -- 8. Bảng Khối hiển thị (Blocks)
-CREATE TABLE display_blocks (
+CREATE TABLE IF NOT EXISTS display_blocks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   position TEXT CHECK (position IN ('main', 'sidebar')),
@@ -113,16 +112,16 @@ CREATE TABLE display_blocks (
   target_page TEXT DEFAULT 'all'
 );
 
--- 9. Bảng Users
-CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+-- 9. Bảng Users (Modified to be independent for demo purposes if FK fails)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT,
   full_name TEXT,
   role TEXT CHECK (role IN ('ADMIN', 'EDITOR', 'GUEST')) DEFAULT 'GUEST'
 );
 
--- 10. Bảng Danh sách cán bộ (NEW)
-CREATE TABLE staff_members (
+-- 10. Bảng Danh sách cán bộ
+CREATE TABLE IF NOT EXISTS staff_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT NOT NULL,
   position TEXT,
@@ -133,8 +132,8 @@ CREATE TABLE staff_members (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 11. Bảng Giới thiệu (NEW - Updated)
-CREATE TABLE school_introductions (
+-- 11. Bảng Giới thiệu
+CREATE TABLE IF NOT EXISTS school_introductions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   slug TEXT,
@@ -145,13 +144,20 @@ CREATE TABLE school_introductions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Bật Row Level Security (RLS) để bảo mật
+-- Bật RLS
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE school_introductions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gallery_albums ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gallery_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE display_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE school_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
--- (Thêm policy cho phép đọc public, ghi cho admin - ở đây cho phép public để test dễ dàng)
+-- Policies (Public Read, Auth Write)
 CREATE POLICY "Public Read Posts" ON posts FOR SELECT USING (true);
 CREATE POLICY "Public Read Config" ON school_config FOR SELECT USING (true);
 CREATE POLICY "Public Read Docs" ON documents FOR SELECT USING (true);
@@ -162,10 +168,16 @@ CREATE POLICY "Public Read Gallery" ON gallery_images FOR SELECT USING (true);
 CREATE POLICY "Public Read Albums" ON gallery_albums FOR SELECT USING (true);
 CREATE POLICY "Public Read Staff" ON staff_members FOR SELECT USING (true);
 CREATE POLICY "Public Read Intro" ON school_introductions FOR SELECT USING (true);
+CREATE POLICY "Public Read Users" ON user_profiles FOR SELECT USING (true);
 
--- Chính sách Ghi (Insert/Update/Delete) nên chỉ dành cho Authenticated Users
 CREATE POLICY "Auth Write Posts" ON posts FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Docs" ON documents FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Config" ON school_config FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Staff" ON staff_members FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Intro" ON school_introductions FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Cats" ON document_categories FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Gallery" ON gallery_images FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Albums" ON gallery_albums FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Menu" ON menu_items FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Blocks" ON display_blocks FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Users" ON user_profiles FOR ALL USING (auth.role() = 'authenticated');
