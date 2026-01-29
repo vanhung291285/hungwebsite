@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { DisplayBlock } from '../../types';
+import { DisplayBlock, PostCategory } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { Plus, Trash2, ArrowUp, ArrowDown, Edit2, Check, Eye, EyeOff, Database } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Edit2, Check, Eye, EyeOff, Database, Layers } from 'lucide-react';
 
 export const ManageBlocks: React.FC = () => {
   const [blocks, setBlocks] = useState<DisplayBlock[]>([]);
+  const [categories, setCategories] = useState<PostCategory[]>([]); // Dynamic categories
+  
   const [newBlock, setNewBlock] = useState<Partial<DisplayBlock>>({
     type: 'grid',
     position: 'main',
@@ -18,22 +20,27 @@ export const ManageBlocks: React.FC = () => {
   const [editingContentId, setEditingContentId] = useState<string | null>(null);
   const [tempContent, setTempContent] = useState('');
 
-  // Categories for mapping
-  const categories = [
-    { id: 'all', name: 'Tất cả (Mới nhất)' },
-    { id: 'news', name: 'Tin Tức & Sự kiện' },
-    { id: 'announcement', name: 'Thông báo' },
-    { id: 'activity', name: 'Hoạt động phong trào' },
-    { id: 'professional', name: 'Hoạt động chuyên môn' },
-  ];
+  // Combined options: System options + Dynamic Categories
+  const getCategoryOptions = () => {
+      const systemOptions = [
+        { id: 'all', name: 'Tất cả (Mới nhất)' },
+        { id: 'featured', name: '★ Tin Nổi Bật (Tiêu điểm)' },
+      ];
+      const dynamicOptions = categories.map(c => ({ id: c.slug, name: c.name }));
+      return [...systemOptions, ...dynamicOptions];
+  };
 
   useEffect(() => {
-    loadBlocks();
+    loadData();
   }, []);
 
-  const loadBlocks = async () => {
-      const res = await DatabaseService.getBlocks();
-      setBlocks(res.sort((a, b) => a.order - b.order));
+  const loadData = async () => {
+      const [blks, cats] = await Promise.all([
+          DatabaseService.getBlocks(),
+          DatabaseService.getPostCategories()
+      ]);
+      setBlocks(blks.sort((a, b) => a.order - b.order));
+      setCategories(cats);
   };
 
   const handleAdd = async () => {
@@ -51,19 +58,19 @@ export const ManageBlocks: React.FC = () => {
       itemCount: newBlock.itemCount || 4,
       isVisible: true,
       targetPage: newBlock.targetPage as any || 'all',
-      // If type is HTML, use default text, otherwise use the selected category slug stored in htmlContent
+      // Store the Category Slug (e.g., 'news', 'featured') in htmlContent if it's a post block
       htmlContent: newBlock.type === 'html' ? '<p>Nội dung mặc định...</p>' : (newBlock.htmlContent || 'all')
     };
     
     await DatabaseService.saveBlock(block);
-    await loadBlocks(); // Reload to get real ID
+    await loadData(); // Reload blocks
     setNewBlock({ type: 'grid', position: 'main', itemCount: 4, isVisible: true, name: '', targetPage: 'all', htmlContent: 'all' });
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Xóa khối này? Hành động không thể hoàn tác.")) {
       await DatabaseService.deleteBlock(id);
-      await loadBlocks();
+      await loadData();
     }
   };
 
@@ -93,27 +100,26 @@ export const ManageBlocks: React.FC = () => {
     samePosBlocks.forEach((b, idx) => { b.order = idx + 1; });
 
     const otherBlocks = blocks.filter(b => b.position !== block.position);
-    // Optimistic Update
     setBlocks([...otherBlocks, ...samePosBlocks]);
 
-    await DatabaseService.saveBlocksOrder(samePosBlocks); // Only save changed ones
-    // No need to reload full list unless we suspect concurrency issues, optimistic is fine for order
+    await DatabaseService.saveBlocksOrder(samePosBlocks);
   };
 
   const startEditContent = (block: DisplayBlock) => {
      setEditingContentId(block.id);
-     setTempContent(block.htmlContent || '');
+     setTempContent(block.htmlContent || 'all');
   };
 
   const saveContent = async (block: DisplayBlock) => {
      const updatedBlock = { ...block, htmlContent: tempContent };
      await DatabaseService.saveBlock(updatedBlock);
-     await loadBlocks();
+     await loadData();
      setEditingContentId(null);
   };
 
   const getCategoryName = (slug?: string) => {
-      const cat = categories.find(c => c.id === slug);
+      const options = getCategoryOptions();
+      const cat = options.find(c => c.id === slug);
       return cat ? cat.name : 'Tất cả';
   };
 
@@ -135,7 +141,10 @@ export const ManageBlocks: React.FC = () => {
                        <div className="flex items-center space-x-3 overflow-hidden">
                           <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${block.isVisible ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-300 text-gray-600'}`}>{index + 1}</span>
                           <div className="min-w-0">
-                             <p className={`font-bold text-sm truncate ${!block.isVisible ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{block.name}</p>
+                             <div className="flex items-center gap-2">
+                                <p className={`font-bold text-sm truncate ${!block.isVisible ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{block.name}</p>
+                             </div>
+                             
                              <div className="text-xs text-gray-500 flex flex-wrap gap-2 mt-1">
                                 <span className="bg-gray-100 px-1 rounded border">{block.type}</span>
                                 {block.targetPage !== 'all' && (
@@ -143,8 +152,8 @@ export const ManageBlocks: React.FC = () => {
                                 )}
                                 {/* Display Source Category if not HTML/Stats/Docs */}
                                 {block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs' && (
-                                    <span className="flex items-center text-blue-600 font-medium">
-                                        <Database size={10} className="mr-1"/> {getCategoryName(block.htmlContent)}
+                                    <span className="flex items-center text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                        <Layers size={10} className="mr-1"/> {getCategoryName(block.htmlContent)}
                                     </span>
                                 )}
                              </div>
@@ -182,22 +191,22 @@ export const ManageBlocks: React.FC = () => {
                         <div className="mt-2 pt-2 border-t border-gray-200">
                             {editingContentId === block.id ? (
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500">Nguồn dữ liệu bài viết:</label>
+                                    <label className="text-xs font-bold text-gray-700">Nguồn tin / Chuyên mục:</label>
                                     <select 
-                                        className="w-full p-2 text-xs border rounded bg-white text-gray-900 outline-none"
+                                        className="w-full p-2 text-xs border rounded bg-white text-gray-900 outline-none focus:ring-1 focus:ring-blue-500"
                                         value={tempContent} 
                                         onChange={e => setTempContent(e.target.value)}
                                     >
-                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        {getCategoryOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                     <div className="flex justify-end gap-2">
                                         <button onClick={() => setEditingContentId(null)} className="text-xs text-gray-500 px-2 py-1 hover:bg-gray-200 rounded">Hủy</button>
-                                        <button onClick={() => saveContent(block)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded flex items-center hover:bg-blue-700 shadow-sm"><Check size={12} className="mr-1"/> Lưu Nguồn</button>
+                                        <button onClick={() => saveContent(block)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded flex items-center hover:bg-blue-700 shadow-sm"><Check size={12} className="mr-1"/> Lưu thay đổi</button>
                                     </div>
                                 </div>
                             ) : (
                                 <button onClick={() => startEditContent(block)} className="text-xs text-gray-500 flex items-center hover:text-blue-600 font-medium">
-                                    <Edit2 size={12} className="mr-1"/> Thay đổi nguồn dữ liệu
+                                    <Edit2 size={12} className="mr-1"/> Đổi chuyên mục: <span className="font-bold ml-1">{getCategoryName(block.htmlContent)}</span>
                                 </button>
                             )}
                         </div>
@@ -214,9 +223,9 @@ export const ManageBlocks: React.FC = () => {
        <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded text-sm text-indigo-800 shadow-sm">
         <strong>Module Cấu hình Giao diện & Sidebar:</strong> 
         <ul className="list-disc ml-5 mt-1 text-xs space-y-1">
-            <li>Sử dụng các mũi tên để sắp xếp thứ tự hiển thị.</li>
+            <li>Sử dụng các mũi tên để sắp xếp thứ tự hiển thị của các khối trên trang chủ.</li>
+            <li>Tại mục <strong>"Nguồn tin / Chuyên mục"</strong>, hãy chọn đúng loại tin (Ví dụ: Tin tức, Thông báo, Tin nổi bật) để khối hiển thị đúng bài viết mong muốn.</li>
             <li>Nhấn vào biểu tượng con mắt để Ẩn/Hiện khối.</li>
-            <li><strong>Mới:</strong> Chọn "Nguồn dữ liệu" để khối tự động lấy bài viết từ chuyên mục tương ứng.</li>
         </ul>
       </div>
 
@@ -224,8 +233,8 @@ export const ManageBlocks: React.FC = () => {
          <h3 className="font-bold text-gray-800 mb-4 flex items-center text-lg"><Plus size={20} className="mr-2 text-indigo-600"/> Tạo khối hiển thị mới</h3>
          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="md:col-span-2">
-               <label className="block text-xs font-bold text-gray-500 mb-1">Tên khối</label>
-               <input type="text" value={newBlock.name || ''} onChange={e => setNewBlock({...newBlock, name: e.target.value})} className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none"/>
+               <label className="block text-xs font-bold text-gray-500 mb-1">Tên khối hiển thị</label>
+               <input type="text" value={newBlock.name || ''} onChange={e => setNewBlock({...newBlock, name: e.target.value})} className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none" placeholder="VD: Tin Tức Mới"/>
             </div>
             <div>
                <label className="block text-xs font-bold text-gray-500 mb-1">Vị trí</label>
@@ -235,33 +244,33 @@ export const ManageBlocks: React.FC = () => {
                </select>
             </div>
             <div>
-               <label className="block text-xs font-bold text-gray-500 mb-1">Loại Block</label>
+               <label className="block text-xs font-bold text-gray-500 mb-1">Kiểu hiển thị</label>
                <select className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none" value={newBlock.type} onChange={e => setNewBlock({...newBlock, type: e.target.value as any})}>
-                 <option value="grid">Tin tức (Lưới)</option>
-                 <option value="list">Tin tức (Danh sách)</option>
-                 <option value="highlight">Tin tức (Nổi bật)</option>
-                 <option value="hero">Slide ảnh (Hero)</option>
+                 <option value="grid">Tin tức (Lưới 2-3 cột)</option>
+                 <option value="list">Tin tức (Danh sách dọc)</option>
+                 <option value="highlight">Tin tức (Nổi bật/Focus)</option>
+                 <option value="hero">Slide ảnh lớn (Hero)</option>
                  <option value="stats">Thống kê truy cập</option>
-                 <option value="docs">Tài liệu mới</option>
-                 <option value="html">Văn bản / HTML</option>
+                 <option value="docs">Tài liệu mới nhất</option>
+                 <option value="html">Mã HTML Tùy chỉnh</option>
                </select>
             </div>
             <div>
-                {/* Conditionally render Data Source or Target Page based on block type */}
+                {/* Conditionally render Category Source or Target Page based on block type */}
                 {newBlock.type !== 'html' && newBlock.type !== 'stats' && newBlock.type !== 'docs' ? (
                      <>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Nguồn dữ liệu</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Nguồn tin / Chuyên mục</label>
                         <select 
                             className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none" 
                             value={newBlock.htmlContent} 
                             onChange={e => setNewBlock({...newBlock, htmlContent: e.target.value})}
                         >
-                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            {getCategoryOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                      </>
                 ) : (
                     <>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Hiển thị tại</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Trang hiển thị</label>
                         <select className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none" value={newBlock.targetPage} onChange={e => setNewBlock({...newBlock, targetPage: e.target.value as any})}>
                             <option value="all">Tất cả các trang</option>
                             <option value="home">Chỉ trang chủ</option>

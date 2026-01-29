@@ -18,11 +18,12 @@ import { ManageMenu } from './pages/admin/ManageMenu';
 import { ManageSettings } from './pages/admin/ManageSettings';
 import { ManageBlocks } from './pages/admin/ManageBlocks';
 import { ManageStaff } from './pages/admin/ManageStaff';
-import { ManageIntro } from './pages/admin/ManageIntro'; 
+import { ManageIntro } from './pages/admin/ManageIntro';
+import { ManagePostCategories } from './pages/admin/ManagePostCategories'; 
 import { Dashboard } from './pages/admin/Dashboard';
 import { DatabaseService } from './services/database'; 
 import { supabase } from './services/supabaseClient';
-import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, DisplayBlock, MenuItem, DocumentCategory, StaffMember, IntroductionArticle } from './types';
+import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, DisplayBlock, MenuItem, DocumentCategory, StaffMember, IntroductionArticle, PostCategory } from './types';
 import { Loader2, Paperclip, FileText, Download } from 'lucide-react';
 
 const FALLBACK_CONFIG: SchoolConfig = {
@@ -51,7 +52,8 @@ const App: React.FC = () => {
   
   // Data State
   const [posts, setPosts] = useState<Post[]>([]);
-  const [introductions, setIntroductions] = useState<IntroductionArticle[]>([]); // New State
+  const [postCategories, setPostCategories] = useState<PostCategory[]>([]); // New State
+  const [introductions, setIntroductions] = useState<IntroductionArticle[]>([]); 
   const [documents, setDocuments] = useState<SchoolDocument[]>([]);
   const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -179,7 +181,8 @@ const App: React.FC = () => {
             fetchedBlocks, 
             fetchedMenu,
             fetchedStaff,
-            fetchedIntros // Fetch introductions
+            fetchedIntros,
+            fetchedPostCats
         ] = await Promise.all([
             DatabaseService.getConfig().catch(() => FALLBACK_CONFIG),
             DatabaseService.getPosts().catch(() => []),
@@ -190,7 +193,8 @@ const App: React.FC = () => {
             DatabaseService.getBlocks().catch(() => []),
             DatabaseService.getMenu().catch(() => []),
             DatabaseService.getStaff().catch(() => []),
-            DatabaseService.getIntroductions().catch(() => [])
+            DatabaseService.getIntroductions().catch(() => []),
+            DatabaseService.getPostCategories().catch(() => [])
         ]);
 
         setConfig(fetchedConfig);
@@ -203,6 +207,7 @@ const App: React.FC = () => {
         setMenuItems(fetchedMenu.sort((a,b) => a.order - b.order));
         setStaffList(fetchedStaff);
         setIntroductions(fetchedIntros.filter(i => i.isVisible).sort((a,b) => a.order - b.order));
+        setPostCategories(fetchedPostCats);
     } catch (error) {
         console.error("Failed to load data", error);
         if (!config) setConfig(FALLBACK_CONFIG);
@@ -278,7 +283,8 @@ const App: React.FC = () => {
         onLogout={handleLogout}
       >
         {currentPage === 'admin-dashboard' && <Dashboard posts={posts} />}
-        {currentPage === 'admin-news' && <ManageNews posts={posts} refreshData={refreshData} />}
+        {currentPage === 'admin-news' && <ManageNews posts={posts} categories={postCategories} refreshData={refreshData} />}
+        {currentPage === 'admin-categories' && <ManagePostCategories refreshData={refreshData} />}
         {currentPage === 'admin-intro' && <ManageIntro refreshData={refreshData} />}
         {currentPage === 'admin-blocks' && <ManageBlocks />}
         {currentPage === 'admin-docs' && <ManageDocuments documents={documents} categories={docCategories} refreshData={refreshData} />}
@@ -306,6 +312,7 @@ const App: React.FC = () => {
         {currentPage === 'home' && (
           <Home 
             posts={posts} 
+            postCategories={postCategories} // Pass categories
             config={config} 
             gallery={galleryImages}
             blocks={blocks}
@@ -343,19 +350,21 @@ const App: React.FC = () => {
                     <h2 className="text-2xl font-bold text-blue-900 uppercase">Tin tức & Sự kiện</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {posts.filter(p => p.status === 'published').map(post => (
+                {posts.filter(p => p.status === 'published').map(post => {
+                    const cat = postCategories.find(c => c.slug === post.category);
+                    return (
                     <div key={post.id} onClick={() => navigate('news-detail', post.id)} className="group cursor-pointer flex flex-col h-full">
                     <div className="overflow-hidden rounded mb-3 border border-gray-200">
                         <img src={post.thumbnail} className="h-48 w-full object-cover transform group-hover:scale-105 transition duration-500" alt={post.title}/>
                     </div>
-                    <span className="text-xs font-bold text-blue-600 uppercase mb-1 block">
-                        {post.category === 'news' ? 'Tin tức' : post.category === 'announcement' ? 'Thông báo' : 'Hoạt động'}
+                    <span className={`text-xs font-bold uppercase mb-1 block text-${cat?.color || 'blue'}-600`}>
+                        {cat?.name || 'Tin tức'}
                     </span>
                     <h3 className="font-bold text-lg mb-2 group-hover:text-blue-700 leading-snug line-clamp-2">{post.title}</h3>
                     <p className="text-gray-700 text-sm line-clamp-2 mb-2 flex-grow">{post.summary}</p>
                     <div className="text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">{post.date}</div>
                     </div>
-                ))}
+                )})}
                 </div>
             </div>
           </div>
@@ -368,12 +377,13 @@ const App: React.FC = () => {
                     {(() => {
                       const post = posts.find(p => p.id === detailId);
                       if (!post) return <div className="p-10 text-center bg-white rounded shadow">Bài viết không tồn tại</div>;
+                      const cat = postCategories.find(c => c.slug === post.category);
                       return (
                         <article className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-200">
                             <div className="mb-6">
                               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-4">{post.title}</h1>
                               <div className="flex flex-wrap items-center gap-4 text-gray-600 text-sm border-b pb-4 border-gray-100">
-                                <span className="text-blue-700 font-bold">{post.category.toUpperCase()}</span>
+                                <span className={`font-bold text-${cat?.color || 'blue'}-700`}>{(cat?.name || post.category).toUpperCase()}</span>
                                 <span>|</span>
                                 <span className="flex items-center gap-1">{post.date}</span>
                                 <span>|</span>
@@ -424,6 +434,7 @@ const App: React.FC = () => {
                     <Sidebar 
                       blocks={sidebarBlocks} 
                       posts={posts} 
+                      postCategories={postCategories}
                       documents={documents} 
                       onNavigate={navigate} 
                       currentPage="news-detail" 

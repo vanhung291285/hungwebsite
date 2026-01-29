@@ -48,10 +48,12 @@ export const ManageIntro: React.FC<ManageIntroProps> = ({ refreshData }) => {
   const handleSave = async () => {
     if (!currentIntro.title) return alert("Vui lòng nhập tiêu đề");
     
-    // Generate slug from title if empty
+    // Better slug generation
     const slug = currentIntro.slug || currentIntro.title.toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-");
 
     try {
         await DatabaseService.saveIntroduction({
@@ -67,9 +69,13 @@ export const ManageIntro: React.FC<ManageIntroProps> = ({ refreshData }) => {
         setIsEditing(false);
         loadData();
         if (refreshData) refreshData();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Save error:", error);
-        alert("Có lỗi xảy ra khi lưu dữ liệu. Vui lòng thử lại.");
+        let msg = error.message || error;
+        if (typeof msg === 'string' && (msg.includes('order_index') || msg.includes('column'))) {
+             msg = "Lỗi CSDL: Bảng 'school_introductions' thiếu cột 'order_index'. Vui lòng chạy lại script SQL mới nhất trên Supabase để sửa lỗi này.";
+        }
+        alert("Lỗi: " + msg);
     }
   };
 
@@ -98,11 +104,24 @@ export const ManageIntro: React.FC<ManageIntroProps> = ({ refreshData }) => {
   const insertTag = (startTag: string, endTag: string = '') => {
     const textarea = editorRef.current;
     if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
+
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? textarea.value.length;
     const text = textarea.value;
-    const newText = text.substring(0, start) + startTag + text.substring(start, end) + endTag + text.substring(end);
+    
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end);
+    
+    const newText = before + startTag + selection + endTag + after;
     setCurrentIntro(prev => ({ ...prev, content: newText }));
+
+    // Restore focus
+    setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + startTag.length + selection.length + endTag.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const insertImageToContent = (file: File) => {
@@ -125,7 +144,17 @@ export const ManageIntro: React.FC<ManageIntroProps> = ({ refreshData }) => {
        <button onClick={() => insertTag('<ul>\n  <li>', '</li>\n</ul>')} className="p-1.5 hover:bg-gray-200 rounded" title="Danh sách"><List size={16}/></button>
        <label className="p-1.5 hover:bg-gray-200 rounded cursor-pointer" title="Chèn ảnh vào bài">
           <Image size={16}/>
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && insertImageToContent(e.target.files[0])} />
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                    insertImageToContent(e.target.files[0]);
+                    e.target.value = ''; // Reset input
+                }
+            }} 
+          />
        </label>
     </div>
   );

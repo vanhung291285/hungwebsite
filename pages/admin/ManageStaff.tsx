@@ -63,26 +63,35 @@ export const ManageStaff: React.FC<ManageStaffProps> = ({ refreshData }) => {
   const handleSave = async () => {
     if (!formData.fullName) return alert("Vui lòng nhập họ tên cán bộ");
     
-    await DatabaseService.saveStaff({
-        id: isEditing && formData.id ? formData.id : '',
-        fullName: formData.fullName,
-        position: formData.position || '',
-        email: formData.email || '',
-        partyDate: formData.partyDate || '',
-        avatarUrl: formData.avatarUrl || '',
-        order: formData.order || staffList.length + 1
-    } as StaffMember);
+    try {
+        await DatabaseService.saveStaff({
+            id: isEditing && formData.id ? formData.id : '',
+            fullName: formData.fullName,
+            position: formData.position || '',
+            email: formData.email || '',
+            partyDate: formData.partyDate || '',
+            avatarUrl: formData.avatarUrl || '',
+            order: formData.order || staffList.length + 1
+        } as StaffMember);
 
-    resetForm();
-    await loadData();
-    if (refreshData) refreshData();
+        resetForm();
+        await loadData();
+        if (refreshData) refreshData();
+    } catch (error: any) {
+        console.error(error);
+        alert("Lỗi khi lưu cán bộ: " + error.message + "\n\nNguyên nhân thường gặp: Bảng 'staff_members' chưa được cấp quyền ghi (RLS). Vui lòng chạy lại Script SQL.");
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa cán bộ này?")) {
-      await DatabaseService.deleteStaff(id);
-      await loadData();
-      if (refreshData) refreshData();
+      try {
+          await DatabaseService.deleteStaff(id);
+          await loadData();
+          if (refreshData) refreshData();
+      } catch (error: any) {
+          alert("Lỗi khi xóa: " + error.message);
+      }
     }
   };
 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, Settings, LogOut, GraduationCap, Menu, Users, Image, FolderOpen, List, LayoutTemplate, Briefcase, Info } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, LogOut, GraduationCap, Menu, Users, Image, FolderOpen, List, LayoutTemplate, Briefcase, Info, Tag } from 'lucide-react';
 import { User, UserRole } from '../types';
 
 interface AdminLayoutProps {
@@ -17,7 +17,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activePage, 
   const menuItems = [
     { id: 'admin-dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard, role: 'ALL' },
     { id: 'admin-news', label: 'Quản lý Tin tức', icon: FileText, role: 'ALL' },
-    { id: 'admin-intro', label: 'Giới thiệu nhà trường', icon: Info, role: 'ALL' }, // NEW
+    { id: 'admin-categories', label: 'Chuyên mục bài viết', icon: Tag, role: UserRole.ADMIN }, // NEW
+    { id: 'admin-intro', label: 'Giới thiệu nhà trường', icon: Info, role: 'ALL' },
     { id: 'admin-docs', label: 'Văn bản - Tài liệu', icon: FolderOpen, role: 'ALL' },
     { id: 'admin-gallery', label: 'Thư viện ảnh', icon: Image, role: 'ALL' },
     { id: 'admin-staff', label: 'Danh sách Cán bộ', icon: Briefcase, role: 'ALL' }, 

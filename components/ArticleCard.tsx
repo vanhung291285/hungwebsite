@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Post } from '../types';
 import { Calendar, User, Eye } from 'lucide-react';
@@ -8,6 +9,19 @@ interface ArticleCardProps {
 }
 
 export const ArticleCard: React.FC<ArticleCardProps> = ({ post, onClick }) => {
+  
+  const getCategoryLabel = (cat: string) => {
+    switch(cat) {
+      case 'news': return { text: 'Tin tức', color: 'bg-blue-600' };
+      case 'announcement': return { text: 'Thông báo', color: 'bg-red-600' };
+      case 'activity': return { text: 'HĐ Phong trào', color: 'bg-green-600' };
+      case 'professional': return { text: 'HĐ Chuyên môn', color: 'bg-indigo-600' };
+      default: return { text: 'Tin tức', color: 'bg-blue-600' };
+    }
+  };
+
+  const badge = getCategoryLabel(post.category);
+
   return (
     <div 
       className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer flex flex-col h-full"
@@ -20,11 +34,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ post, onClick }) => {
           className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-2 left-2">
-          <span className={`px-2 py-1 text-xs font-bold text-white rounded uppercase ${
-            post.category === 'news' ? 'bg-blue-600' :
-            post.category === 'announcement' ? 'bg-red-600' : 'bg-green-600'
-          }`}>
-            {post.category === 'news' ? 'Tin tức' : post.category === 'announcement' ? 'Thông báo' : 'Hoạt động'}
+          <span className={`px-2 py-1 text-[10px] font-bold text-white rounded uppercase shadow-sm ${badge.color}`}>
+            {badge.text}
           </span>
         </div>
       </div>

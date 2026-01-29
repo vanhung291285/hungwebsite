@@ -34,6 +34,14 @@ export interface Attachment {
   fileType?: string;
 }
 
+export interface PostCategory {
+  id: string;
+  name: string;
+  slug: string;
+  color: string; // e.g., 'blue', 'red', 'green', 'indigo'
+  order: number;
+}
+
 export interface Post {
   id: string;
   title: string;
@@ -44,7 +52,7 @@ export interface Post {
   imageCaption?: string;
   author: string;
   date: string;
-  category: 'news' | 'announcement' | 'activity' | 'professional';
+  category: string; // Changed from union type to string (slug)
   additionalCategories?: string[];
   tags: string[];
   views: number;
@@ -154,6 +162,7 @@ export type PageRoute =
   | 'login' 
   | 'admin-dashboard' 
   | 'admin-news' 
+  | 'admin-categories' // NEW
   | 'admin-blocks'
   | 'admin-docs'
   | 'admin-gallery'

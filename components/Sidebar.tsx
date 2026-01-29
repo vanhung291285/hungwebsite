@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { DisplayBlock, Post, SchoolDocument } from '../types';
-import { Bell, FileText, Download, Users, Globe, BarChart2, Clock, Calendar, ArrowRightCircle, CircleArrowRight, Eye, X, Maximize2 } from 'lucide-react';
+import { DisplayBlock, Post, SchoolDocument, PostCategory } from '../types';
+import { Bell, FileText, Download, Users, Globe, BarChart2, Clock, Calendar, ArrowRightCircle, CircleArrowRight, Eye, X, Maximize2, Star } from 'lucide-react';
 
 interface SidebarProps {
   blocks: DisplayBlock[];
   posts: Post[];
+  postCategories: PostCategory[]; // NEW
   documents: SchoolDocument[];
   onNavigate: (path: string, id?: string) => void;
   currentPage: string;
@@ -69,19 +71,24 @@ const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
    );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, documents, onNavigate, currentPage }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories, documents, onNavigate, currentPage }) => {
   const [previewDoc, setPreviewDoc] = useState<SchoolDocument | null>(null);
   
   const getPostsForBlock = (block: DisplayBlock) => {
     let filtered = posts.filter(p => p.status === 'published');
     
-    // Check if block has a configured category source (stored in htmlContent)
-    const categorySource = block.htmlContent;
-    const hasCategorySource = categorySource && categorySource !== 'all' && block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs';
+    // LOGIC: Check category source stored in `htmlContent`
+    // If block type is NOT 'html', 'stats', 'docs', then htmlContent holds the Category Slug
+    const categorySource = block.htmlContent || 'all'; 
 
-    if (hasCategorySource) {
+    if (categorySource === 'featured') {
+        // Filter for Featured/Highlight posts
+        filtered = filtered.filter(p => p.isFeatured);
+    } else if (categorySource !== 'all') {
+        // Filter by specific category slug
         filtered = filtered.filter(p => p.category === categorySource);
-    } 
+    }
+    // If 'all', we don't filter by category
 
     return filtered
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -97,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, documents, onNa
   };
 
   const renderBlock = (block: DisplayBlock) => {
-    // Check Visibility based on Page
+    // Check Visibility based on Page configuration
     if (block.targetPage !== 'all') {
        if (block.targetPage === 'home' && currentPage !== 'home') return null;
        if (block.targetPage === 'detail' && currentPage !== 'news-detail') return null;
@@ -172,14 +179,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, documents, onNa
        );
     }
 
-    // 3. Article List Block (Standard or Latest News)
+    // 3. Article List Block (Standard, Highlight or Latest News)
     const blockPosts = getPostsForBlock(block);
     if (blockPosts.length === 0) return null;
 
-    // Special styling for "TIN MỚI NHẤT" or general list types
+    // Custom Style for "Highlight" or "Featured" type blocks
+    if (block.type === 'highlight') {
+         return (
+            <div key={block.id} className="mb-8">
+               <div className="bg-[#b91c1c] text-white p-3 rounded-t-lg flex justify-between items-center shadow-sm">
+                   <h3 className="font-bold uppercase text-sm flex items-center"><Star size={16} className="mr-2 text-yellow-300 fill-yellow-300"/> {block.name}</h3>
+               </div>
+               <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-3 shadow-sm">
+                   <div className="flex flex-col gap-3">
+                       {blockPosts.map(post => (
+                           <div key={post.id} onClick={() => onNavigate('news-detail', post.id)} className="flex gap-3 group cursor-pointer hover:bg-gray-50 p-1.5 rounded transition border-b border-gray-100 last:border-0">
+                               {post.thumbnail && (
+                                   <div className="w-20 h-16 shrink-0 rounded overflow-hidden border border-gray-200">
+                                       <img src={post.thumbnail} className="w-full h-full object-cover" alt=""/>
+                                   </div>
+                               )}
+                               <div>
+                                   <h4 className="text-xs font-bold text-gray-900 leading-tight mb-1 group-hover:text-red-700 line-clamp-2">{post.title}</h4>
+                                   <div className="text-[10px] text-gray-400 flex items-center"><Calendar size={10} className="mr-1"/> {post.date}</div>
+                               </div>
+                           </div>
+                       ))}
+                   </div>
+               </div>
+            </div>
+         );
+    }
+
+    // Standard Sidebar List Style
     return (
       <div key={block.id} className="bg-white border border-gray-200 shadow-sm mb-6 rounded overflow-hidden">
-         {/* Green Header */}
+         {/* Header */}
          <div className="bg-[#1e7e46] p-3 flex items-center">
             <h3 className="font-bold text-white uppercase text-sm flex items-center">
                <CircleArrowRight size={16} className="mr-2 text-white fill-white bg-transparent" />
@@ -196,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, documents, onNa
                      >
                         {/* Thumbnail */}
                         {post.thumbnail && (
-                            <div className="w-24 h-16 shrink-0 overflow-hidden border border-gray-200">
+                            <div className="w-24 h-16 shrink-0 overflow-hidden border border-gray-200 rounded-sm">
                                 <img src={post.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                             </div>
                         )}
@@ -206,6 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, documents, onNa
                             <h4 className="text-sm text-[#2a4e6c] font-medium line-clamp-3 group-hover:text-blue-600 leading-snug uppercase">
                             {post.title}
                             </h4>
+                            <div className="mt-1 text-[10px] text-gray-400">{post.date}</div>
                         </div>
                      </div>
                   </li>

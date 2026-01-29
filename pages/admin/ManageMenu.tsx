@@ -53,11 +53,12 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
      const path = newPathType === 'internal' ? newPath : newExternalUrl;
      if (!path) return alert("Vui lòng nhập/chọn đường dẫn");
 
+     const maxOrder = menuItems.length > 0 ? Math.max(...menuItems.map(i => i.order)) : 0;
      const newItem: MenuItem = {
         id: `menu_${Date.now()}`,
         label: newLabel,
         path: path,
-        order: menuItems.length + 1
+        order: maxOrder + 1
      };
 
      const updatedList = [...menuItems, newItem];
@@ -84,18 +85,21 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
   };
 
   const moveItem = async (index: number, direction: 'up' | 'down') => {
+      if (direction === 'up' && index === 0) return;
+      if (direction === 'down' && index === menuItems.length - 1) return;
+
       const newItems = [...menuItems];
-      if (direction === 'up' && index > 0) {
-         [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
-      } else if (direction === 'down' && index < newItems.length - 1) {
-         [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-      }
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
       
+      // Swap items
+      [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+      
+      // Re-assign sequential order based on new array position
       const reordered = newItems.map((item, idx) => ({ ...item, order: idx + 1 }));
       setMenuItems(reordered);
       
       await DatabaseService.saveMenu(reordered);
-      await loadMenu(); // Reload to be safe
+      // No need to full reload here to keep UI snappy, assuming save works
       refreshData(false);
   };
 

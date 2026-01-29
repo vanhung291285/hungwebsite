@@ -1,38 +1,62 @@
 
 import React from 'react';
-import { Post, SchoolConfig, GalleryImage, DisplayBlock, IntroductionArticle } from '../types';
+import { Post, SchoolConfig, GalleryImage, DisplayBlock, IntroductionArticle, PostCategory } from '../types';
 import { Sidebar } from '../components/Sidebar';
 import { ChevronRight, Calendar, ImageIcon, ArrowRight, Star, Clock } from 'lucide-react';
 
 interface HomeProps {
   posts: Post[];
+  postCategories: PostCategory[]; // NEW
   config: SchoolConfig;
   gallery: GalleryImage[];
   blocks: DisplayBlock[];
-  introductions?: IntroductionArticle[]; // Added prop
+  introductions?: IntroductionArticle[]; 
   onNavigate: (path: string, id?: string) => void;
 }
 
-export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, introductions = [], onNavigate }) => {
+export const Home: React.FC<HomeProps> = ({ posts, postCategories, config, gallery, blocks, introductions = [], onNavigate }) => {
   
-  // Helper to get posts
+  // Helper to get posts based on Block Configuration
   const getPostsForBlock = (block: DisplayBlock) => {
     let filtered = posts.filter(p => p.status === 'published');
-    const categorySource = block.htmlContent;
-    const hasCategorySource = categorySource && categorySource !== 'all' && block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs';
-    if (hasCategorySource) filtered = filtered.filter(p => p.category === categorySource);
+    
+    // Check if block has a configured category source (stored in htmlContent for non-HTML blocks)
+    // IMPORTANT: htmlContent is hijacked to store Category Slug or 'featured'
+    const categorySource = block.htmlContent || 'all'; 
+
+    if (categorySource === 'featured') {
+        // Filter for Featured/Highlight posts
+        filtered = filtered.filter(p => p.isFeatured);
+    } else if (categorySource !== 'all' && block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs') {
+        // Filter by specific category slug (news, announcement, activity, etc.)
+        filtered = filtered.filter(p => p.category === categorySource);
+    }
+    
+    // Sort by newest first
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, block.itemCount);
+  };
+
+  const getCategoryBadge = (catSlug: string) => {
+    const cat = postCategories.find(c => c.slug === catSlug);
+    if (cat) {
+        return { text: cat.name.toUpperCase(), color: `bg-${cat.color}-600` };
+    }
+    return { text: 'TIN TỨC', color: 'bg-blue-600' };
   };
 
   const renderBlock = (block: DisplayBlock) => {
     if (block.targetPage === 'detail') return null;
     const blockPosts = getPostsForBlock(block);
-    if (blockPosts.length === 0) return null;
+    
+    // Only render if there are posts (except for HTML/Stats which handle themselves)
+    if (blockPosts.length === 0 && block.type !== 'html' && block.type !== 'stats') return null;
 
     // 1. HERO SLIDER BLOCK
     if (block.type === 'hero') {
         const mainHero = blockPosts[0];
         const subHeros = blockPosts.slice(1, 3);
+        if (!mainHero) return null;
+
         return (
           <section key={block.id} className="mb-8">
              <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
@@ -44,7 +68,9 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
                     <img src={mainHero.thumbnail} alt={mainHero.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
                     <div className="absolute bottom-0 left-0 p-6 w-full">
-                        <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 uppercase rounded mb-2 inline-block shadow">Tin nổi bật</span>
+                        <span className={`text-white text-[10px] font-bold px-2 py-1 uppercase rounded mb-2 inline-block shadow ${getCategoryBadge(mainHero.category).color}`}>
+                            {block.htmlContent === 'featured' ? 'TIN NỔI BẬT' : getCategoryBadge(mainHero.category).text}
+                        </span>
                         <h2 className="text-white text-xl md:text-3xl font-bold leading-tight mb-2 line-clamp-2 hover:text-yellow-400 transition drop-shadow-md">{mainHero.title}</h2>
                         <div className="flex items-center text-gray-200 text-xs gap-3">
                             <span className="flex items-center gap-1"><Calendar size={12}/> {mainHero.date}</span>
@@ -83,12 +109,14 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {blockPosts.map((post, idx) => (
+               {blockPosts.map((post, idx) => {
+                   const badge = getCategoryBadge(post.category);
+                   return (
                    <div key={post.id} onClick={() => onNavigate('news-detail', post.id)} className="group cursor-pointer flex flex-col h-full">
                        <div className="relative overflow-hidden rounded mb-3 h-48 border border-gray-200 shadow-sm">
                            <img src={post.thumbnail} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt=""/>
-                           <div className="absolute top-2 left-2 bg-blue-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow">
-                                {post.category === 'news' ? 'TIN TỨC' : 'SỰ KIỆN'}
+                           <div className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded shadow ${badge.color}`}>
+                                {badge.text}
                            </div>
                        </div>
                        <h4 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2 group-hover:text-blue-700 transition">{post.title}</h4>
@@ -97,7 +125,8 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
                            <Clock size={12} className="mr-1"/> {post.date}
                        </div>
                    </div>
-               ))}
+                   );
+               })}
             </div>
           </section>
         );
@@ -133,9 +162,6 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
   const mainBlocks = blocks.filter(b => b.position === 'main');
   const sidebarBlocks = blocks.filter(b => b.position === 'sidebar');
 
-  // Find the first introduction to display (usually "General Introduction")
-  const primaryIntro = introductions && introductions.length > 0 ? introductions[0] : null;
-
   return (
     <div className="pb-10 bg-slate-100 font-sans">
       <div className="container mx-auto px-4 mt-6">
@@ -144,27 +170,6 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
             {/* MAIN COLUMN (8/12) */}
             <div className="lg:col-span-8">
                
-               {/* DYNAMIC INTRODUCTION SECTION (SYNCED) */}
-               {primaryIntro && (
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-6 items-start">
-                        {primaryIntro.imageUrl && (
-                            <div className="w-full md:w-1/3 shrink-0">
-                                <img src={primaryIntro.imageUrl} alt={primaryIntro.title} className="rounded-lg shadow-md w-full object-cover h-48 border border-gray-100"/>
-                            </div>
-                        )}
-                        <div className="flex-1">
-                            <h3 className="text-xl font-bold text-blue-900 mb-3 border-b border-gray-100 pb-2 uppercase">{primaryIntro.title}</h3>
-                            <div className="text-gray-800 text-sm mb-4 text-justify leading-relaxed line-clamp-4 font-medium">
-                                {/* Strip HTML tags for preview if content is HTML */}
-                                {primaryIntro.content.replace(/<[^>]*>?/gm, '')}
-                            </div>
-                            <button onClick={() => onNavigate('intro')} className="text-white bg-blue-700 px-4 py-2 rounded text-sm font-bold hover:bg-blue-800 flex items-center shadow-sm transition">
-                                Xem chi tiết <ArrowRight size={14} className="ml-1"/>
-                            </button>
-                        </div>
-                   </div>
-               )}
-
                {mainBlocks.length > 0 ? (
                  mainBlocks.map(block => renderBlock(block))
                ) : (
@@ -202,6 +207,7 @@ export const Home: React.FC<HomeProps> = ({ posts, config, gallery, blocks, intr
                <Sidebar 
                   blocks={sidebarBlocks} 
                   posts={posts} 
+                  postCategories={postCategories}
                   documents={[]} 
                   onNavigate={onNavigate} 
                   currentPage="home" 

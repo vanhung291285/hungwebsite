@@ -147,7 +147,11 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
         refreshData();
     } catch (error: any) {
         console.error(error);
-        alert("Có lỗi xảy ra khi lưu loại văn bản: " + (error.message || error));
+        let msg = error.message || error;
+        if (typeof msg === 'string' && (msg.includes('order_index') || msg.includes('column'))) {
+             msg = "Lỗi CSDL: Bảng thiếu cột 'order_index'. Vui lòng chạy lại script SQL mới nhất trong Supabase để cập nhật cấu trúc bảng.";
+        }
+        alert("Có lỗi xảy ra: " + msg);
     }
   };
 
