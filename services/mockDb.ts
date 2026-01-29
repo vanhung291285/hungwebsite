@@ -1,3 +1,4 @@
+
 import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory } from '../types';
 
 const STORAGE_KEYS = {
@@ -45,9 +46,9 @@ const DEFAULT_CONFIG: SchoolConfig = {
 };
 
 const DEFAULT_DOC_CATS: DocumentCategory[] = [
-  { id: 'cat_official', name: 'Văn bản hành chính', slug: 'official', description: 'Quyết định, thông báo chính thức' },
-  { id: 'cat_resource', name: 'Tài liệu học tập', slug: 'resource', description: 'Đề cương, bài giảng' },
-  { id: 'cat_timetable', name: 'Thời khóa biểu', slug: 'timetable', description: 'Lịch học các khối lớp' },
+  { id: 'cat_official', name: 'Văn bản hành chính', slug: 'official', description: 'Quyết định, thông báo chính thức', order: 1 },
+  { id: 'cat_resource', name: 'Tài liệu học tập', slug: 'resource', description: 'Đề cương, bài giảng', order: 2 },
+  { id: 'cat_timetable', name: 'Thời khóa biểu', slug: 'timetable', description: 'Lịch học các khối lớp', order: 3 },
 ];
 
 const DEFAULT_DOCS: SchoolDocument[] = [

@@ -56,11 +56,22 @@ export interface Post {
   attachments: Attachment[];
 }
 
+export interface IntroductionArticle {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  imageUrl?: string;
+  order: number;
+  isVisible: boolean;
+}
+
 export interface DocumentCategory {
   id: string;
   name: string;
   slug: string; // unique identifier for routing/filtering
   description?: string;
+  order: number; // Added order field
 }
 
 export interface SchoolDocument {
@@ -148,5 +159,6 @@ export type PageRoute =
   | 'admin-gallery'
   | 'admin-users'
   | 'admin-staff'
+  | 'admin-intro'
   | 'admin-menu'
   | 'admin-settings';

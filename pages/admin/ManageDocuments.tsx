@@ -1,7 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { SchoolDocument, DocumentCategory } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { Plus, Trash2, Link as LinkIcon, ExternalLink, Settings, List, FolderOpen, UploadCloud, FileText, CheckCircle, X, Edit, Save } from 'lucide-react';
+import { Plus, Trash2, Link as LinkIcon, ExternalLink, Settings, List, FolderOpen, UploadCloud, FileText, CheckCircle, X, Edit, Save, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ManageDocumentsProps {
   documents: SchoolDocument[];
@@ -100,11 +101,15 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
   const handleSaveCat = async () => {
     if (!newCat.name || !newCat.slug) return alert("Vui lòng nhập tên và mã định danh");
     
+    // Calculate new order if creating (last + 1)
+    const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.order)) : 0;
+    
     await DatabaseService.saveDocCategory({
         id: editingCatId ? editingCatId : `cat_${Date.now()}`,
         name: newCat.name,
         slug: newCat.slug,
-        description: newCat.description || ''
+        description: newCat.description || '',
+        order: editingCatId ? (categories.find(c => c.id === editingCatId)?.order || 0) : maxOrder + 1
     });
 
     setNewCat({ name: '', slug: '', description: '' });
@@ -131,6 +136,25 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
           if (editingCatId === id) handleCancelEditCat();
           refreshData();
       }
+  };
+
+  const handleMoveCat = async (cat: DocumentCategory, direction: 'up' | 'down') => {
+      const sortedCats = [...categories].sort((a,b) => a.order - b.order);
+      const index = sortedCats.findIndex(c => c.id === cat.id);
+      
+      if (direction === 'up' && index === 0) return;
+      if (direction === 'down' && index === sortedCats.length - 1) return;
+      
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      
+      // Swap order
+      [sortedCats[index], sortedCats[targetIndex]] = [sortedCats[targetIndex], sortedCats[index]];
+      
+      // Re-assign order numbers to sequential
+      sortedCats.forEach((c, idx) => c.order = idx + 1);
+      
+      await DatabaseService.saveDocCategoriesOrder(sortedCats);
+      refreshData();
   };
 
   return (
@@ -401,6 +425,7 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                   <table className="w-full text-left">
                       <thead className="bg-gray-100 text-xs font-bold uppercase text-gray-700">
                           <tr>
+                              <th className="p-3 text-center w-12">#</th>
                               <th className="p-3">Tên loại</th>
                               <th className="p-3">Mã (Slug)</th>
                               <th className="p-3">Mô tả</th>
@@ -408,15 +433,33 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                           </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                          {categories.map(cat => (
+                          {categories.map((cat, index) => (
                               <tr key={cat.id} className={`hover:bg-gray-50 ${editingCatId === cat.id ? 'bg-yellow-50' : ''}`}>
+                                  <td className="p-3 text-center text-xs font-bold text-gray-400">{cat.order || index + 1}</td>
                                   <td className="p-3 font-bold text-blue-900 flex items-center">
                                       <FolderOpen size={16} className="mr-2 text-yellow-500"/> {cat.name}
                                   </td>
                                   <td className="p-3 font-mono text-xs text-gray-600">{cat.slug}</td>
                                   <td className="p-3 text-sm text-gray-600">{cat.description}</td>
                                   <td className="p-3 text-right">
-                                      <div className="flex justify-end gap-2">
+                                      <div className="flex justify-end gap-1 items-center">
+                                         <div className="flex flex-col mr-2 border-r pr-2 border-gray-200">
+                                            <button 
+                                                onClick={() => handleMoveCat(cat, 'up')} 
+                                                disabled={index === 0}
+                                                className={`p-0.5 ${index === 0 ? 'text-gray-300' : 'text-gray-400 hover:text-blue-600'}`}
+                                            >
+                                                <ArrowUp size={14}/>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleMoveCat(cat, 'down')}
+                                                disabled={index === categories.length - 1}
+                                                className={`p-0.5 ${index === categories.length - 1 ? 'text-gray-300' : 'text-gray-400 hover:text-blue-600'}`}
+                                            >
+                                                <ArrowDown size={14}/>
+                                            </button>
+                                         </div>
+
                                         <button 
                                             onClick={() => handleEditCat(cat)} 
                                             className="text-yellow-600 hover:bg-yellow-100 p-1.5 rounded"

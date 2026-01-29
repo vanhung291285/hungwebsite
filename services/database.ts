@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember } from '../types';
+import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember, IntroductionArticle } from '../types';
 
 // Default Config Fallback
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -141,6 +141,41 @@ export const DatabaseService = {
     await supabase.from('posts').delete().eq('id', id);
   },
 
+  // --- INTRODUCTIONS (NEW) ---
+  getIntroductions: async (): Promise<IntroductionArticle[]> => {
+    const { data } = await supabase.from('school_introductions').select('*').order('order_index', { ascending: true });
+    return (data || []).map((i: any) => ({
+      id: i.id,
+      title: i.title,
+      slug: i.slug,
+      content: i.content,
+      imageUrl: i.image_url,
+      order: i.order_index,
+      isVisible: i.is_visible
+    }));
+  },
+
+  saveIntroduction: async (intro: IntroductionArticle) => {
+    const dbIntro = {
+       title: intro.title,
+       slug: intro.slug,
+       content: intro.content,
+       image_url: intro.imageUrl,
+       order_index: intro.order,
+       is_visible: intro.isVisible
+    };
+    if (intro.id && intro.id.length > 10) {
+       await supabase.from('school_introductions').update(dbIntro).eq('id', intro.id);
+    } else {
+       await supabase.from('school_introductions').insert(dbIntro);
+    }
+  },
+
+  deleteIntroduction: async (id: string) => {
+     await supabase.from('school_introductions').delete().eq('id', id);
+  },
+
+
   // --- DOCUMENTS ---
   getDocuments: async (): Promise<SchoolDocument[]> => {
     const { data } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
@@ -174,22 +209,36 @@ export const DatabaseService = {
   },
 
   getDocCategories: async (): Promise<DocumentCategory[]> => {
-    const { data } = await supabase.from('document_categories').select('*');
+    const { data } = await supabase.from('document_categories').select('*').order('order_index', { ascending: true });
     return (data || []).map((c: any) => ({
         id: c.id,
         name: c.name,
         slug: c.slug,
-        description: c.description
+        description: c.description,
+        order: c.order_index || 0
     }));
   },
 
   saveDocCategory: async (cat: DocumentCategory) => {
-     const dbCat = { name: cat.name, slug: cat.slug, description: cat.description };
+     const dbCat = { 
+       name: cat.name, 
+       slug: cat.slug, 
+       description: cat.description,
+       order_index: cat.order 
+     };
      if (cat.id && cat.id.length > 10 && !cat.id.startsWith('cat_')) {
         await supabase.from('document_categories').update(dbCat).eq('id', cat.id);
      } else {
         await supabase.from('document_categories').insert(dbCat);
      }
+  },
+
+  saveDocCategoriesOrder: async (cats: DocumentCategory[]) => {
+      for (const c of cats) {
+          if (c.id && c.id.length > 10 && !c.id.startsWith('cat_')) {
+             await supabase.from('document_categories').update({ order_index: c.order }).eq('id', c.id);
+          }
+      }
   },
 
   deleteDocCategory: async (id: string) => {

@@ -33,6 +33,7 @@ CREATE TABLE document_categories (
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
   description TEXT,
+  order_index INTEGER DEFAULT 0, -- Added order column
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -132,10 +133,23 @@ CREATE TABLE staff_members (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11. Bảng Giới thiệu (NEW - Updated)
+CREATE TABLE school_introductions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  slug TEXT,
+  content TEXT,
+  image_url TEXT,
+  order_index INTEGER DEFAULT 0,
+  is_visible BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Bật Row Level Security (RLS) để bảo mật
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE school_introductions ENABLE ROW LEVEL SECURITY;
 
 -- (Thêm policy cho phép đọc public, ghi cho admin - ở đây cho phép public để test dễ dàng)
 CREATE POLICY "Public Read Posts" ON posts FOR SELECT USING (true);
@@ -147,9 +161,11 @@ CREATE POLICY "Public Read Blocks" ON display_blocks FOR SELECT USING (true);
 CREATE POLICY "Public Read Gallery" ON gallery_images FOR SELECT USING (true);
 CREATE POLICY "Public Read Albums" ON gallery_albums FOR SELECT USING (true);
 CREATE POLICY "Public Read Staff" ON staff_members FOR SELECT USING (true);
+CREATE POLICY "Public Read Intro" ON school_introductions FOR SELECT USING (true);
 
 -- Chính sách Ghi (Insert/Update/Delete) nên chỉ dành cho Authenticated Users
 CREATE POLICY "Auth Write Posts" ON posts FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Docs" ON documents FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Config" ON school_config FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth Write Staff" ON staff_members FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth Write Intro" ON school_introductions FOR ALL USING (auth.role() = 'authenticated');
