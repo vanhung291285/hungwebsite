@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { SchoolDocument, DocumentCategory } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { Plus, Trash2, Link as LinkIcon, ExternalLink, Settings, List, FolderOpen, UploadCloud, FileText, CheckCircle, X, Edit, Save, ArrowUp, ArrowDown, RotateCcw, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Link as LinkIcon, Settings, List, FolderOpen, UploadCloud, CheckCircle, Edit, Save, ArrowUp, ArrowDown, RotateCcw, AlertCircle, Download } from 'lucide-react';
 
 interface ManageDocumentsProps {
   documents: SchoolDocument[];
@@ -13,8 +13,8 @@ interface ManageDocumentsProps {
 export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, categories, refreshData }) => {
   const [activeTab, setActiveTab] = useState<'docs' | 'categories'>('docs');
 
-  // Upload Mode State
-  const [uploadMode, setUploadMode] = useState<'link' | 'file'>('link');
+  // Upload Mode State - Mặc định là upload file theo yêu cầu
+  const [uploadMode, setUploadMode] = useState<'link' | 'file'>('file');
   
   // State for New Document
   const [newDoc, setNewDoc] = useState<Partial<SchoolDocument>>({ 
@@ -58,8 +58,8 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
-            alert("File quá lớn! Vui lòng chọn file dưới 5MB.");
+        if (file.size > 10 * 1024 * 1024) { // Tăng giới hạn lên 10MB
+            alert("File quá lớn! Vui lòng chọn file dưới 10MB.");
             return;
         }
 
@@ -92,7 +92,8 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
     }
 
     const doc: SchoolDocument = {
-      id: Date.now().toString(),
+      // QUAN TRỌNG: Để id rỗng để Database tự sinh UUID, tránh lỗi "invalid input syntax for type uuid"
+      id: '', 
       number: newDoc.number!,
       title: newDoc.title!,
       date: newDoc.date!,
@@ -102,6 +103,7 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
     
     try {
         await DatabaseService.saveDocument(doc);
+        // Reset form sau khi lưu thành công
         setNewDoc({ 
             categoryId: categories[0]?.id || '', 
             date: new Date().toISOString().split('T')[0], 
@@ -109,16 +111,26 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
             number: '', 
             downloadUrl: '' 
         });
+        // Reset file input (nếu có thể) bằng cách render lại component hoặc dùng ref
+        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
         refreshData();
+        alert("Đã lưu văn bản thành công!");
     } catch (e: any) {
+        console.error(e);
         alert("Lỗi khi lưu văn bản: " + (e.message || e));
     }
   };
 
   const handleDeleteDoc = async (id: string) => {
     if (confirm("Xóa văn bản này?")) {
-      await DatabaseService.deleteDocument(id);
-      refreshData();
+      try {
+        await DatabaseService.deleteDocument(id);
+        refreshData();
+      } catch (e: any) {
+        alert("Không thể xóa: " + e.message);
+      }
     }
   };
 
@@ -132,7 +144,8 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
         const maxOrder = currentOrders.length > 0 ? Math.max(...currentOrders) : 0;
         
         await DatabaseService.saveDocCategory({
-            id: editingCatId ? editingCatId : `cat_${Date.now()}`,
+            // Sử dụng check để đảm bảo ID hợp lệ khi update/insert
+            id: editingCatId ? editingCatId : '', // Để trống cho Insert
             name: newCat.name,
             slug: newCat.slug,
             description: newCat.description || '',
@@ -147,18 +160,14 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
         refreshData();
     } catch (error: any) {
         console.error(error);
-        let msg = error.message || error;
-        if (typeof msg === 'string' && (msg.includes('order_index') || msg.includes('column'))) {
-             msg = "Lỗi CSDL: Bảng thiếu cột 'order_index'. Vui lòng chạy lại script SQL mới nhất trong Supabase để cập nhật cấu trúc bảng.";
-        }
-        alert("Có lỗi xảy ra: " + msg);
+        alert("Lỗi khi lưu loại văn bản: " + (error.message || error));
     }
   };
 
   const handleEditCat = (cat: DocumentCategory) => {
     setNewCat({ name: cat.name, slug: cat.slug, description: cat.description });
     setEditingCatId(cat.id);
-    setIsAutoSlug(false); // Disable auto-slug when editing to prevent accidental changes
+    setIsAutoSlug(false);
   };
 
   const handleCancelEditCat = () => {
@@ -169,7 +178,7 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
 
   const handleDeleteCat = async (id: string) => {
       const hasDocs = documents.some(d => d.categoryId === id);
-      if (hasDocs) return alert("Không thể xóa loại văn bản này vì đang chứa tài liệu. Hãy xóa tài liệu hoặc chuyển sang danh mục khác trước.");
+      if (hasDocs) return alert("Không thể xóa loại văn bản này vì đang chứa tài liệu.");
       
       if (confirm("Bạn chắc chắn muốn xóa loại văn bản này?")) {
           await DatabaseService.deleteDocCategory(id);
@@ -179,7 +188,6 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
   };
 
   const handleMoveCat = async (cat: DocumentCategory, direction: 'up' | 'down') => {
-      // Create a copy and sort safely
       const sortedCats = [...categories].sort((a,b) => (a.order || 0) - (b.order || 0));
       const index = sortedCats.findIndex(c => c.id === cat.id);
       
@@ -189,12 +197,10 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
       
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
       
-      // Swap elements
       const temp = sortedCats[index];
       sortedCats[index] = sortedCats[targetIndex];
       sortedCats[targetIndex] = temp;
       
-      // Re-assign sequential orders
       const reorderedCats = sortedCats.map((c, idx) => ({
           ...c,
           order: idx + 1
@@ -208,14 +214,13 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
       }
   };
 
-  // Safe Sort for Render
   const displayCategories = [...categories].sort((a,b) => (a.order || 0) - (b.order || 0));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in font-sans">
       <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded text-sm text-blue-900 flex justify-between items-center shadow-sm">
          <div>
-            <strong>Module Văn bản & Tài liệu:</strong> Quản lý các tài liệu công khai trên cổng thông tin.
+            <strong>Module Văn bản & Tài liệu:</strong> Quản lý công văn, quyết định, tài liệu tải về.
          </div>
          <div className="flex space-x-2 bg-white p-1 rounded border border-blue-100">
             <button 
@@ -252,14 +257,13 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                     </select>
-                    {categories.length === 0 && <p className="text-xs text-red-500 mt-1">Vui lòng tạo loại văn bản trước.</p>}
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1">Số hiệu / Mã</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1">Số kí hiệu</label>
                     <input 
                         type="text" 
-                        className="w-full border border-gray-300 rounded p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-500"
-                        placeholder="VD: 123/QĐ-BGH"
+                        className="w-full border border-gray-300 rounded p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="VD: 01/QĐ-UBND"
                         value={newDoc.number || ''}
                         onChange={e => setNewDoc({...newDoc, number: e.target.value})}
                     />
@@ -277,19 +281,21 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                 {/* File Upload / Link Selection Area */}
                 <div className="md:col-span-3">
                     <div className="flex justify-between items-center mb-1">
-                        <label className="block text-sm font-bold text-gray-900">Nguồn tài liệu</label>
+                        <label className="block text-sm font-bold text-gray-900">File đính kèm</label>
                         <div className="flex text-xs border rounded overflow-hidden">
-                            <button 
-                                onClick={() => setUploadMode('link')}
-                                className={`px-3 py-1 font-medium transition ${uploadMode === 'link' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                            >
-                                Link Online
-                            </button>
                             <button 
                                 onClick={() => setUploadMode('file')}
                                 className={`px-3 py-1 font-medium transition ${uploadMode === 'file' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
                             >
+                                <UploadCloud size={14} className="inline mr-1"/>
                                 Tải từ máy tính
+                            </button>
+                            <button 
+                                onClick={() => setUploadMode('link')}
+                                className={`px-3 py-1 font-medium transition ${uploadMode === 'link' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <LinkIcon size={14} className="inline mr-1"/>
+                                Link Online
                             </button>
                         </div>
                     </div>
@@ -313,7 +319,7 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                                 className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition ${
                                     newDoc.downloadUrl && newDoc.downloadUrl.startsWith('data:') 
                                         ? 'border-green-400 bg-green-50' 
-                                        : 'border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-400'
+                                        : 'border-blue-300 bg-blue-50 hover:bg-blue-100'
                                 }`}
                             >
                                 <div className="flex flex-col items-center justify-center pt-2 pb-2">
@@ -324,15 +330,16 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                                         </>
                                     ) : (
                                         <>
-                                            <UploadCloud className="w-8 h-8 text-gray-400 mb-1" />
-                                            <p className="text-sm text-gray-500"><span className="font-bold">Nhấn để tải lên</span> (PDF, Word, Excel - Max 5MB)</p>
+                                            <UploadCloud className="w-8 h-8 text-blue-600 mb-1" />
+                                            <p className="text-sm text-gray-600"><span className="font-bold text-blue-700">Nhấn để chọn file</span> (PDF, Doc, Excel...)</p>
                                         </>
                                     )}
                                 </div>
                                 <input 
+                                    id="file-upload"
                                     type="file" 
                                     className="hidden" 
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png"
                                     onChange={handleFileUpload} 
                                 />
                             </label>
@@ -341,11 +348,11 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
                 </div>
 
                 <div className="md:col-span-4">
-                    <label className="block text-sm font-bold text-gray-900 mb-1">Trích yếu nội dung (Tiêu đề)</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1">Trích yếu (Nội dung tóm tắt)</label>
                     <input 
                     type="text" 
-                    className="w-full border border-gray-300 rounded p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-500"
-                    placeholder="Nhập nội dung tóm tắt văn bản..."
+                    className="w-full border border-gray-300 rounded p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Nhập nội dung trích yếu..."
                     value={newDoc.title || ''}
                     onChange={e => setNewDoc({...newDoc, title: e.target.value})}
                     />
@@ -359,52 +366,54 @@ export const ManageDocuments: React.FC<ManageDocumentsProps> = ({ documents, cat
             </div>
         </div>
 
-        {/* List */}
+        {/* List Table - RECONFIGURED COLUMNS: STT | Số kí hiệu | Ngày | Trích yếu | File */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-            <table className="w-full text-left">
-            <thead className="bg-gray-100 text-gray-900 font-bold uppercase text-sm border-b border-gray-200">
+            <table className="w-full text-left border-collapse">
+            <thead className="bg-white text-gray-800 font-bold text-sm border-b-2 border-gray-200">
                 <tr>
-                <th className="p-4">Loại</th>
-                <th className="p-4">Số hiệu</th>
-                <th className="p-4">Trích yếu</th>
-                <th className="p-4">Nguồn</th>
-                <th className="p-4">Ngày</th>
-                <th className="p-4 text-right">Xóa</th>
+                <th className="p-3 border border-gray-200 w-16 text-center">STT</th>
+                <th className="p-3 border border-gray-200 w-48">Số kí hiệu</th>
+                <th className="p-3 border border-gray-200 w-32 text-center">Ngày ban hành</th>
+                <th className="p-3 border border-gray-200">Trích yếu</th>
+                <th className="p-3 border border-gray-200 w-40">File đính kèm</th>
+                <th className="p-3 border border-gray-200 w-16 text-center">Xóa</th>
                 </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-                {documents.map(doc => {
-                    const cat = categories.find(c => c.id === doc.categoryId);
+            <tbody className="divide-y divide-gray-100 text-sm">
+                {documents.map((doc, index) => {
                     const isLocalFile = doc.downloadUrl && doc.downloadUrl.startsWith('data:');
                     
                     return (
                         <tr key={doc.id} className="hover:bg-blue-50 transition">
-                            <td className="p-4">
-                                <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold border border-gray-200">
-                                    {cat ? cat.name : 'Chưa phân loại'}
-                                </span>
+                            <td className="p-3 border border-gray-200 text-center font-bold text-gray-500">
+                                {index + 1}
                             </td>
-                            <td className="p-4 font-mono text-sm font-semibold text-gray-700">{doc.number}</td>
-                            <td className="p-4 font-bold text-gray-800">{doc.title}</td>
-                            <td className="p-4 text-center">
+                            <td className="p-3 border border-gray-200 font-medium text-gray-700">
+                                {doc.number}
+                            </td>
+                            <td className="p-3 border border-gray-200 text-center text-gray-600">
+                                {doc.date.split('-').reverse().join('/')}
+                            </td>
+                            <td className="p-3 border border-gray-200 font-medium text-gray-800">
+                                {doc.title}
+                            </td>
+                            <td className="p-3 border border-gray-200">
                             {doc.downloadUrl && doc.downloadUrl !== '#' ? (
                                 <a 
                                     href={doc.downloadUrl} 
                                     target="_blank" 
                                     rel="noreferrer" 
                                     download={isLocalFile ? `${doc.number}.pdf` : undefined} 
-                                    className={`flex items-center text-xs font-bold ${isLocalFile ? 'text-green-600 hover:text-green-800' : 'text-blue-600 hover:text-blue-800'} hover:underline`}
+                                    className="flex items-center text-gray-700 font-bold hover:text-blue-600 group"
                                 >
-                                    {isLocalFile ? <FileText size={14} className="mr-1"/> : <ExternalLink size={14} className="mr-1"/>}
-                                    {isLocalFile ? 'File' : 'Link'}
+                                    <Download size={16} className="mr-1 group-hover:animate-bounce" /> Tải tập tin
                                 </a>
-                            ) : <span className="text-gray-400 text-xs italic">Không có</span>}
+                            ) : <span className="text-gray-400 italic">Không có file</span>}
                             </td>
-                            <td className="p-4 text-sm text-gray-600">{doc.date}</td>
-                            <td className="p-4 text-right">
-                            <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition">
-                                <Trash2 size={18} />
-                            </button>
+                            <td className="p-3 border border-gray-200 text-center">
+                                <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50" title="Xóa">
+                                    <Trash2 size={16} />
+                                </button>
                             </td>
                         </tr>
                     );

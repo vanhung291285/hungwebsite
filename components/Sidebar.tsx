@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { DisplayBlock, Post, SchoolDocument, PostCategory } from '../types';
-import { Bell, FileText, Download, Users, Globe, BarChart2, Clock, Calendar, ArrowRightCircle, CircleArrowRight, Eye, X, Maximize2, Star } from 'lucide-react';
+import { DisplayBlock, Post, SchoolDocument, PostCategory, DocumentCategory, Video } from '../types';
+import { Bell, FileText, Download, Users, Globe, BarChart2, Clock, Calendar, ArrowRightCircle, CircleArrowRight, Eye, X, Maximize2, Star, Folder, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
   blocks: DisplayBlock[];
   posts: Post[];
-  postCategories: PostCategory[]; // NEW
+  postCategories: PostCategory[]; 
   documents: SchoolDocument[];
+  docCategories?: DocumentCategory[]; 
+  videos?: Video[]; // NEW
   onNavigate: (path: string, id?: string) => void;
   currentPage: string;
 }
@@ -30,40 +32,40 @@ const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
    };
 
    return (
-      <div className="bg-white border-t-4 border-blue-800 shadow-sm rounded-b-lg overflow-hidden mb-8">
-         <div className="bg-blue-50 p-3 border-b border-blue-100">
-            <h3 className="font-bold text-blue-900 uppercase text-sm flex items-center">
-               <BarChart2 size={16} className="mr-2" /> {block.name}
+      <div className="bg-white border-t-4 border-blue-800 shadow-sm rounded-b-lg overflow-hidden mb-10">
+         <div className="bg-blue-50 p-4 border-b border-blue-100">
+            <h3 className="font-bold text-blue-900 uppercase text-base flex items-center">
+               <BarChart2 size={20} className="mr-3" /> {block.name}
             </h3>
          </div>
-         <div className="p-4">
+         <div className="p-5">
             {/* Live Clock */}
-            <div className="text-center mb-4 pb-4 border-b border-dashed border-gray-200">
-               <div className="text-2xl font-bold text-blue-800 font-mono tracking-wider">
+            <div className="text-center mb-5 pb-5 border-b border-dashed border-gray-200">
+               <div className="text-3xl font-bold text-blue-800 font-mono tracking-wider">
                   {formatTime(currentTime)}
                </div>
-               <div className="text-xs text-gray-500 font-medium uppercase mt-1 flex items-center justify-center">
-                  <Calendar size={12} className="mr-1"/> {formatDate(currentTime)}
+               <div className="text-sm text-gray-500 font-bold uppercase mt-2 flex items-center justify-center">
+                  <Calendar size={14} className="mr-2"/> {formatDate(currentTime)}
                </div>
             </div>
 
             {/* Stats List */}
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-4 text-base">
                <li className="flex justify-between items-center">
-                  <span className="flex items-center text-gray-600"><Users size={16} className="mr-2 text-green-600"/> Đang online:</span>
+                  <span className="flex items-center text-gray-600"><Users size={18} className="mr-2 text-green-600"/> Đang online:</span>
                   <span className="font-bold text-gray-800">15</span>
                </li>
                <li className="flex justify-between items-center">
-                  <span className="flex items-center text-gray-600"><Clock size={16} className="mr-2 text-orange-500"/> Hôm nay:</span>
+                  <span className="flex items-center text-gray-600"><Clock size={18} className="mr-2 text-orange-500"/> Hôm nay:</span>
                   <span className="font-bold text-gray-800">350</span>
                </li>
                <li className="flex justify-between items-center">
-                  <span className="flex items-center text-gray-600"><Calendar size={16} className="mr-2 text-purple-500"/> Tháng này:</span>
+                  <span className="flex items-center text-gray-600"><Calendar size={18} className="mr-2 text-purple-500"/> Tháng này:</span>
                   <span className="font-bold text-gray-800">9.200</span>
                </li>
-               <li className="flex justify-between items-center pt-2 border-t border-gray-100 mt-2">
-                  <span className="flex items-center text-gray-700 font-bold"><Globe size={16} className="mr-2 text-blue-600"/> Tổng truy cập:</span>
-                  <span className="font-bold text-blue-900">1.250.400</span>
+               <li className="flex justify-between items-center pt-3 border-t border-gray-100 mt-2">
+                  <span className="flex items-center text-gray-700 font-bold"><Globe size={18} className="mr-2 text-blue-600"/> Tổng truy cập:</span>
+                  <span className="font-bold text-blue-900 text-lg">1.250.400</span>
                </li>
             </ul>
          </div>
@@ -71,14 +73,87 @@ const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
    );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories, documents, onNavigate, currentPage }) => {
+// Sub-component for Calendar Widget
+const CalendarBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
+    const [date, setDate] = useState(new Date());
+    
+    const currYear = date.getFullYear();
+    const currMonth = date.getMonth(); // 0-indexed
+    
+    const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currYear, currMonth, 1).getDay(); // 0 (Sun) - 6 (Sat)
+    
+    // Adjust start day to Monday (1) if desired, but standard JS starts Sunday (0)
+    // Let's stick to Monday start for Vietnam style
+    // If Sun (0), becomes 6. If Mon (1), becomes 0.
+    const startDayIndex = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; 
+
+    const days = [];
+    // Padding empty days
+    for (let i = 0; i < startDayIndex; i++) {
+        days.push(null);
+    }
+    // Actual days
+    for (let i = 1; i <= daysInMonth; i++) {
+        days.push(i);
+    }
+
+    const prevMonth = () => {
+        setDate(new Date(currYear, currMonth - 1, 1));
+    };
+    
+    const nextMonth = () => {
+        setDate(new Date(currYear, currMonth + 1, 1));
+    };
+
+    const isToday = (day: number) => {
+        const today = new Date();
+        return day === today.getDate() && currMonth === today.getMonth() && currYear === today.getFullYear();
+    };
+
+    return (
+        <div className="bg-white border-t-4 border-blue-600 shadow-sm rounded-b-lg overflow-hidden mb-10">
+            <div className="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-center">
+                <h3 className="font-bold text-blue-900 uppercase text-base flex items-center">
+                    <Calendar size={20} className="mr-2" /> {block.name}
+                </h3>
+            </div>
+            <div className="p-5">
+                {/* Month Nav */}
+                <div className="flex justify-between items-center mb-5">
+                    <button onClick={prevMonth} className="p-1.5 hover:bg-gray-200 rounded text-gray-700"><ChevronLeft size={20}/></button>
+                    <span className="font-bold text-blue-800 text-base uppercase">Tháng {currMonth + 1} / {currYear}</span>
+                    <button onClick={nextMonth} className="p-1.5 hover:bg-gray-200 rounded text-gray-700"><ChevronRight size={20}/></button>
+                </div>
+                
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center text-sm">
+                    {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
+                        <div key={d} className="font-bold text-gray-500 py-1.5">{d}</div>
+                    ))}
+                    {days.map((day, idx) => (
+                        <div key={idx} className={`py-2 rounded-lg font-medium ${day ? 'cursor-default' : ''} ${day && isToday(day) ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                            {day}
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="mt-4 text-xs text-center text-gray-500 italic">
+                    Hôm nay: <span className="font-bold">{new Date().toLocaleDateString('vi-VN')}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories, documents, docCategories = [], videos = [], onNavigate, currentPage }) => {
   const [previewDoc, setPreviewDoc] = useState<SchoolDocument | null>(null);
   
   const getPostsForBlock = (block: DisplayBlock) => {
     let filtered = posts.filter(p => p.status === 'published');
     
     // LOGIC: Check category source stored in `htmlContent`
-    // If block type is NOT 'html', 'stats', 'docs', then htmlContent holds the Category Slug
+    // If block type is NOT 'html', 'stats', 'docs', 'doc_cats', 'video', 'calendar', then htmlContent holds the Category Slug
     const categorySource = block.htmlContent || 'all'; 
 
     if (categorySource === 'featured') {
@@ -115,55 +190,123 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
        return <StatsBlock key={block.id} block={block} />;
     }
 
+    // 0.1 Calendar Block (NEW)
+    if (block.type === 'calendar') {
+        return <CalendarBlock key={block.id} block={block} />;
+    }
+
     // 1. HTML / Text Block
     if (block.type === 'html') {
       return (
-        <div key={block.id} className="bg-white border-t-4 border-green-600 shadow-sm rounded-b-lg overflow-hidden mb-8">
-           <div className="bg-green-50 p-3 border-b border-green-100">
-              <h3 className="font-bold text-green-800 uppercase text-sm">{block.name}</h3>
+        <div key={block.id} className="bg-white border-t-4 border-green-600 shadow-sm rounded-b-lg overflow-hidden mb-10">
+           <div className="bg-green-50 p-4 border-b border-green-100">
+              <h3 className="font-bold text-green-800 uppercase text-base">{block.name}</h3>
            </div>
-           <div className="p-4 text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: block.htmlContent || '' }} />
+           <div className="p-5 text-base text-gray-700" dangerouslySetInnerHTML={{ __html: block.htmlContent || '' }} />
         </div>
       );
     }
 
-    // 2. Documents Block
+    // 2. Document Categories (Folders) Block
+    if (block.type === 'doc_cats') {
+        return (
+            <div key={block.id} className="bg-white border border-blue-900 rounded-lg overflow-hidden mb-8 shadow-sm">
+                <div className="bg-blue-900 p-4 text-center">
+                    <h3 className="font-bold text-white uppercase text-base">{block.name}</h3>
+                </div>
+                <div className="p-0">
+                    <ul className="divide-y divide-gray-100">
+                        {docCategories.map(cat => (
+                            <li key={cat.id}>
+                                <button
+                                    onClick={() => onNavigate('documents', cat.slug)}
+                                    className="w-full flex items-center p-4 hover:bg-blue-50 transition text-left group"
+                                >
+                                    <Folder size={22} className="text-yellow-500 fill-yellow-500 mr-3 flex-shrink-0" />
+                                    <span className="text-base font-bold text-gray-700 uppercase group-hover:text-blue-800">
+                                        {cat.name}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                        {docCategories.length === 0 && <li className="p-5 text-center text-gray-500 text-sm italic">Chưa có danh mục nào</li>}
+                    </ul>
+                </div>
+            </div>
+        );
+    }
+
+    // 3. Video Block
+    if (block.type === 'video') {
+       const displayVideos = videos.filter(v => v.isVisible).sort((a,b) => a.order - b.order).slice(0, 1);
+       if (displayVideos.length === 0) return null;
+       
+       return (
+          <div key={block.id} className="bg-white border-t-4 border-red-600 shadow-sm rounded-b-lg overflow-hidden mb-10">
+             <div className="bg-red-50 p-4 border-b border-red-100">
+                <h3 className="font-bold text-red-800 uppercase text-base flex items-center">
+                   <PlayCircle size={20} className="mr-2" /> {block.name}
+                </h3>
+             </div>
+             <div className="p-3">
+                {displayVideos.map(video => (
+                   <div key={video.id} className="space-y-3">
+                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-md">
+                         <iframe 
+                            width="100%" 
+                            height="100%" 
+                            src={`https://www.youtube.com/embed/${video.youtubeId}`} 
+                            title={video.title}
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowFullScreen
+                         ></iframe>
+                      </div>
+                      <p className="text-sm font-bold text-gray-800 px-1">{video.title}</p>
+                   </div>
+                ))}
+             </div>
+          </div>
+       );
+    }
+
+    // 4. Documents Block (Latest Files)
     if (block.type === 'docs') {
        const docsToShow = documents.slice(0, block.itemCount);
        return (
-        <div key={block.id} className="bg-white border-t-4 border-orange-500 shadow-sm rounded-b-lg overflow-hidden mb-8">
-           <div className="bg-orange-50 p-3 border-b border-orange-100">
-              <h3 className="font-bold text-orange-800 uppercase text-sm flex items-center">
-                 <FileText size={16} className="mr-2" /> {block.name}
+        <div key={block.id} className="bg-white border-t-4 border-orange-500 shadow-sm rounded-b-lg overflow-hidden mb-10">
+           <div className="bg-orange-50 p-4 border-b border-orange-100">
+              <h3 className="font-bold text-orange-800 uppercase text-base flex items-center">
+                 <FileText size={20} className="mr-2" /> {block.name}
               </h3>
            </div>
-           <div className="p-2">
-              <ul className="space-y-1">
+           <div className="p-3">
+              <ul className="space-y-2">
                  {docsToShow.map(doc => (
-                    <li key={doc.id} className="flex items-start p-2 hover:bg-orange-50 rounded group transition border-b border-dashed border-gray-100 last:border-0">
-                       <FileText size={18} className="text-orange-400 mt-0.5 mr-2 flex-shrink-0" />
+                    <li key={doc.id} className="flex items-start p-3 hover:bg-orange-50 rounded group transition border-b border-dashed border-gray-100 last:border-0">
+                       <FileText size={22} className="text-orange-400 mt-0.5 mr-3 flex-shrink-0" />
                        <div className="flex-1 overflow-hidden">
-                          <p className="text-sm font-medium text-gray-700 group-hover:text-orange-700 leading-snug mb-1">{doc.title}</p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-gray-400">{doc.number}</span>
+                          <p className="text-base font-medium text-gray-700 group-hover:text-orange-700 leading-snug mb-1">{doc.title}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-gray-400 font-mono">{doc.number}</span>
                             
                             {/* Action Buttons */}
                             <div className="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button 
                                     onClick={() => handlePreview(doc)}
-                                    className="flex items-center text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100"
+                                    className="flex items-center text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded hover:bg-blue-100"
                                     title="Xem trước"
                                 >
-                                    <Eye size={10} className="mr-1"/> Xem
+                                    <Eye size={12} className="mr-1"/> Xem
                                 </button>
                                 <a 
                                     href={doc.downloadUrl} 
                                     target="_blank" 
                                     rel="noreferrer"
-                                    className="flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded hover:bg-green-100"
+                                    className="flex items-center text-xs font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded hover:bg-green-100"
                                     title="Tải về"
                                 >
-                                    <Download size={10} className="mr-1"/> Tải
+                                    <Download size={12} className="mr-1"/> Tải
                                 </a>
                             </div>
                           </div>
@@ -171,37 +314,56 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                     </li>
                  ))}
               </ul>
-              <div className="text-right p-2 pt-3 border-t border-gray-100">
-                 <button onClick={() => onNavigate('documents')} className="text-xs font-bold text-orange-600 hover:underline">Xem tất cả »</button>
+              <div className="text-right p-3 pt-4 border-t border-gray-100">
+                 <button onClick={() => onNavigate('documents')} className="text-sm font-bold text-orange-600 hover:underline">Xem tất cả »</button>
               </div>
            </div>
         </div>
        );
     }
 
-    // 3. Article List Block (Standard, Highlight or Latest News)
+    // 5. Article List Block (Highlight or Standard List)
+    // IMPORTANT: Now supports "1 Main + Sub List" layout
     const blockPosts = getPostsForBlock(block);
     if (blockPosts.length === 0) return null;
 
-    // Custom Style for "Highlight" or "Featured" type blocks
+    // Split posts into Main and Sub
+    const [mainPost, ...subPosts] = blockPosts;
+
+    // Custom Style for "Highlight" (Red Header)
     if (block.type === 'highlight') {
          return (
-            <div key={block.id} className="mb-8">
-               <div className="bg-[#b91c1c] text-white p-3 rounded-t-lg flex justify-between items-center shadow-sm">
-                   <h3 className="font-bold uppercase text-sm flex items-center"><Star size={16} className="mr-2 text-yellow-300 fill-yellow-300"/> {block.name}</h3>
+            <div key={block.id} className="mb-10">
+               <div className="bg-[#b91c1c] text-white p-4 rounded-t-lg flex justify-between items-center shadow-sm">
+                   <h3 className="font-bold uppercase text-base flex items-center"><Star size={20} className="mr-2 text-yellow-300 fill-yellow-300"/> {block.name}</h3>
                </div>
-               <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-3 shadow-sm">
-                   <div className="flex flex-col gap-3">
-                       {blockPosts.map(post => (
-                           <div key={post.id} onClick={() => onNavigate('news-detail', post.id)} className="flex gap-3 group cursor-pointer hover:bg-gray-50 p-1.5 rounded transition border-b border-gray-100 last:border-0">
+               <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4 shadow-sm">
+                   {/* Main Big Post */}
+                   {mainPost && (
+                       <div onClick={() => onNavigate('news-detail', mainPost.id)} className="cursor-pointer group mb-4 pb-4 border-b border-gray-100">
+                           {mainPost.thumbnail && (
+                               <div className="w-full h-48 overflow-hidden rounded mb-3 border border-gray-200">
+                                   <img src={mainPost.thumbnail} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" alt=""/>
+                               </div>
+                           )}
+                           <h4 className="text-base font-bold text-gray-900 leading-snug mb-2 group-hover:text-red-700">{mainPost.title}</h4>
+                           <div className="text-xs text-gray-400 flex items-center mb-2"><Calendar size={12} className="mr-1"/> {mainPost.date}</div>
+                           <p className="text-sm text-gray-600 line-clamp-2">{mainPost.summary}</p>
+                       </div>
+                   )}
+
+                   {/* Sub List */}
+                   <div className="flex flex-col gap-4">
+                       {subPosts.map(post => (
+                           <div key={post.id} onClick={() => onNavigate('news-detail', post.id)} className="flex gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded transition border-b border-dashed border-gray-100 last:border-0">
                                {post.thumbnail && (
                                    <div className="w-20 h-16 shrink-0 rounded overflow-hidden border border-gray-200">
                                        <img src={post.thumbnail} className="w-full h-full object-cover" alt=""/>
                                    </div>
                                )}
                                <div>
-                                   <h4 className="text-xs font-bold text-gray-900 leading-tight mb-1 group-hover:text-red-700 line-clamp-2">{post.title}</h4>
-                                   <div className="text-[10px] text-gray-400 flex items-center"><Calendar size={10} className="mr-1"/> {post.date}</div>
+                                   <h4 className="text-sm font-bold text-gray-800 leading-snug mb-1 group-hover:text-red-700 line-clamp-2">{post.title}</h4>
+                                   <div className="text-xs text-gray-400">{post.date}</div>
                                </div>
                            </div>
                        ))}
@@ -211,37 +373,53 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
          );
     }
 
-    // Standard Sidebar List Style
+    // Standard Sidebar List Style (Green Header)
+    // Also updated to support 1 Main + Sub List layout
     return (
-      <div key={block.id} className="bg-white border border-gray-200 shadow-sm mb-6 rounded overflow-hidden">
+      <div key={block.id} className="bg-white border border-gray-200 shadow-sm mb-8 rounded-lg overflow-hidden">
          {/* Header */}
-         <div className="bg-[#1e7e46] p-3 flex items-center">
-            <h3 className="font-bold text-white uppercase text-sm flex items-center">
-               <CircleArrowRight size={16} className="mr-2 text-white fill-white bg-transparent" />
+         <div className="bg-[#1e7e46] p-4 flex items-center">
+            <h3 className="font-bold text-white uppercase text-base flex items-center">
+               <CircleArrowRight size={20} className="mr-2 text-white fill-white bg-transparent" />
                {block.name}
             </h3>
          </div>
-         <div className="p-0 bg-white">
+         <div className="p-4 bg-white">
+            {/* Main Big Post */}
+            {mainPost && (
+                <div onClick={() => onNavigate('news-detail', mainPost.id)} className="cursor-pointer group mb-4 pb-4 border-b border-gray-100">
+                    {mainPost.thumbnail && (
+                        <div className="w-full h-48 overflow-hidden rounded mb-3 border border-gray-200">
+                            <img src={mainPost.thumbnail} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" alt=""/>
+                        </div>
+                    )}
+                    <h4 className="text-base font-bold text-blue-900 leading-snug mb-2 group-hover:text-green-700 uppercase">{mainPost.title}</h4>
+                    <div className="text-xs text-gray-400 flex items-center mb-2"><Calendar size={12} className="mr-1"/> {mainPost.date}</div>
+                    <p className="text-sm text-gray-500 line-clamp-2">{mainPost.summary}</p>
+                </div>
+            )}
+
+            {/* Sub List */}
             <ul className="divide-y divide-gray-100">
-               {blockPosts.map(post => (
-                  <li key={post.id} className="p-3 hover:bg-gray-50 transition">
+               {subPosts.map(post => (
+                  <li key={post.id} className="py-3 hover:bg-gray-50 transition rounded px-2">
                      <div 
                         onClick={() => onNavigate('news-detail', post.id)} 
                         className="flex gap-3 cursor-pointer group"
                      >
                         {/* Thumbnail */}
                         {post.thumbnail && (
-                            <div className="w-24 h-16 shrink-0 overflow-hidden border border-gray-200 rounded-sm">
+                            <div className="w-20 h-16 shrink-0 overflow-hidden border border-gray-200 rounded-sm">
                                 <img src={post.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                             </div>
                         )}
                         
                         {/* Title */}
                         <div className="flex-1">
-                            <h4 className="text-sm text-[#2a4e6c] font-medium line-clamp-3 group-hover:text-blue-600 leading-snug uppercase">
+                            <h4 className="text-sm text-[#2a4e6c] font-bold line-clamp-2 group-hover:text-green-700 leading-snug">
                             {post.title}
                             </h4>
-                            <div className="mt-1 text-[10px] text-gray-400">{post.date}</div>
+                            <div className="mt-1.5 text-xs text-gray-400">{post.date}</div>
                         </div>
                      </div>
                   </li>
@@ -270,26 +448,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 animate-fade-in">
                 <div className="bg-white w-full max-w-4xl h-[85vh] rounded-lg shadow-2xl flex flex-col overflow-hidden">
                     {/* Header */}
-                    <div className="flex justify-between items-center p-3 bg-gray-800 text-white border-b border-gray-700">
+                    <div className="flex justify-between items-center p-4 bg-gray-800 text-white border-b border-gray-700">
                         <div className="flex items-center overflow-hidden">
-                             <FileText size={18} className="mr-2 text-orange-400 flex-shrink-0"/>
-                             <h3 className="font-bold text-sm truncate pr-4">{previewDoc.title}</h3>
+                             <FileText size={20} className="mr-2 text-orange-400 flex-shrink-0"/>
+                             <h3 className="font-bold text-base truncate pr-4">{previewDoc.title}</h3>
                         </div>
-                        <div className="flex items-center space-x-2 flex-shrink-0">
+                        <div className="flex items-center space-x-3 flex-shrink-0">
                             <a 
                                 href={previewDoc.downloadUrl} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                className="p-1.5 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition"
+                                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition"
                                 title="Mở trong tab mới"
                             >
-                                <Maximize2 size={18} />
+                                <Maximize2 size={20} />
                             </a>
                             <button 
                                 onClick={() => setPreviewDoc(null)}
-                                className="p-1.5 hover:bg-red-600 rounded text-gray-300 hover:text-white transition"
+                                className="p-2 hover:bg-red-600 rounded text-gray-300 hover:text-white transition"
                             >
-                                <X size={20} />
+                                <X size={24} />
                             </button>
                         </div>
                     </div>
@@ -318,14 +496,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                     </div>
                     
                     {/* Footer */}
-                    <div className="bg-gray-50 p-3 border-t border-gray-200 text-right">
+                    <div className="bg-gray-50 p-4 border-t border-gray-200 text-right">
                         <a 
                             href={previewDoc.downloadUrl} 
                             target="_blank" 
                             rel="noreferrer"
-                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700 transition"
+                            className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-600 text-white text-base font-bold rounded hover:bg-blue-700 transition"
                         >
-                            <Download size={16} className="mr-2"/> Tải tài liệu về máy
+                            <Download size={18} className="mr-2"/> Tải tài liệu về máy
                         </a>
                     </div>
                 </div>

@@ -4,12 +4,15 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Sidebar } from './components/Sidebar'; 
 import { AdminLayout } from './components/AdminLayout';
+import { FloatingContact } from './components/FloatingContact'; 
+import { ScrollToTop } from './components/ScrollToTop'; // NEW IMPORT
 import { Home } from './pages/Home';
 import { Introduction } from './pages/Introduction';
 import { Documents } from './pages/Documents';
 import { Gallery } from './pages/Gallery';
 import { Staff } from './pages/Staff'; 
 import { Login } from './pages/Login'; 
+import { Register } from './pages/Register';
 import { ManageNews } from './pages/admin/ManageNews';
 import { ManageDocuments } from './pages/admin/ManageDocuments';
 import { ManageGallery } from './pages/admin/ManageGallery';
@@ -20,19 +23,20 @@ import { ManageBlocks } from './pages/admin/ManageBlocks';
 import { ManageStaff } from './pages/admin/ManageStaff';
 import { ManageIntro } from './pages/admin/ManageIntro';
 import { ManagePostCategories } from './pages/admin/ManagePostCategories'; 
+import { ManageVideos } from './pages/admin/ManageVideos';
 import { Dashboard } from './pages/admin/Dashboard';
 import { DatabaseService } from './services/database'; 
 import { supabase } from './services/supabaseClient';
-import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, DisplayBlock, MenuItem, DocumentCategory, StaffMember, IntroductionArticle, PostCategory } from './types';
+import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, DisplayBlock, MenuItem, DocumentCategory, StaffMember, IntroductionArticle, PostCategory, Video } from './types';
 import { Loader2, Paperclip, FileText, Download } from 'lucide-react';
 
 const FALLBACK_CONFIG: SchoolConfig = {
-  name: 'Trường Học VinaEdu',
-  slogan: 'Hệ thống đang bảo trì hoặc mất kết nối',
+  name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
+  slogan: 'Dạy tốt - Học tốt - Rèn luyện tốt',
   logoUrl: '',
   bannerUrl: '',
   principalName: '',
-  address: 'Vui lòng kiểm tra kết nối internet',
+  address: 'Xã Suối Lư, Huyện Điện Biên Đông, Tỉnh Điện Biên',
   phone: '',
   email: '',
   hotline: '',
@@ -44,7 +48,7 @@ const FALLBACK_CONFIG: SchoolConfig = {
   homeNewsCount: 6,
   homeShowProgram: false,
   primaryColor: '#1e3a8a',
-  metaTitle: 'Trường học',
+  metaTitle: 'Trường PTDTBT TH và THCS Suối Lư',
   metaDescription: ''
 };
 
@@ -60,6 +64,7 @@ const App: React.FC = () => {
   const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]); // NEW VIDEO STATE
   const [blocks, setBlocks] = useState<DisplayBlock[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -184,7 +189,8 @@ const App: React.FC = () => {
             fetchedMenu,
             fetchedStaff,
             fetchedIntros,
-            fetchedPostCats
+            fetchedPostCats,
+            fetchedVideos
         ] = await Promise.all([
             DatabaseService.getConfig().catch(() => FALLBACK_CONFIG),
             DatabaseService.getPosts().catch(() => []),
@@ -196,15 +202,25 @@ const App: React.FC = () => {
             DatabaseService.getMenu().catch(() => []),
             DatabaseService.getStaff().catch(() => []),
             DatabaseService.getIntroductions().catch(() => []),
-            DatabaseService.getPostCategories().catch(() => [])
+            DatabaseService.getPostCategories().catch(() => []),
+            DatabaseService.getVideos().catch(() => [])
         ]);
 
-        setConfig(fetchedConfig);
+        // Nếu database chưa có config (trả về default), override bằng FALLBACK_CONFIG mới nếu tên không khớp
+        const finalConfig = fetchedConfig;
+        if (finalConfig.name === 'Trường THPT Mẫu') {
+             finalConfig.name = FALLBACK_CONFIG.name;
+             finalConfig.slogan = FALLBACK_CONFIG.slogan;
+             finalConfig.address = FALLBACK_CONFIG.address;
+        }
+
+        setConfig(finalConfig);
         setPosts(fetchedPosts);
         setDocuments(fetchedDocs);
         setDocCategories(fetchedCats);
         setGalleryImages(fetchedGallery);
         setAlbums(fetchedAlbums);
+        setVideos(fetchedVideos); // Set Video State
         setBlocks(fetchedBlocks.filter(b => b.isVisible).sort((a,b) => a.order - b.order));
         setMenuItems(fetchedMenu.sort((a,b) => a.order - b.order));
         setStaffList(fetchedStaff);
@@ -243,6 +259,9 @@ const App: React.FC = () => {
     }
 
     if (id) setDetailId(id);
+    // Reset detailId if navigating to a page where ID might be stale but not needed, unless explicitly passed
+    // But for 'documents', we use id as category slug, so keep it.
+    
     setCurrentPage(path as PageRoute);
     window.scrollTo(0, 0);
 
@@ -273,6 +292,10 @@ const App: React.FC = () => {
       return <Login onLoginSuccess={handleLoginSuccess} onNavigate={navigate} />;
   }
 
+  if (currentPage === 'register') {
+      return <Register onNavigate={navigate} />;
+  }
+
   if (currentPage.startsWith('admin-')) {
     if (!currentUser) {
         return <Login onLoginSuccess={handleLoginSuccess} onNavigate={navigate} />;
@@ -292,6 +315,7 @@ const App: React.FC = () => {
         {currentPage === 'admin-docs' && <ManageDocuments documents={documents} categories={docCategories} refreshData={refreshData} />}
         {currentPage === 'admin-gallery' && <ManageGallery images={galleryImages} albums={albums} refreshData={refreshData} />}
         {currentPage === 'admin-staff' && <ManageStaff refreshData={refreshData} />} 
+        {currentPage === 'admin-videos' && <ManageVideos refreshData={refreshData} />} 
         {currentUser.role === UserRole.ADMIN && (
           <>
             {currentPage === 'admin-users' && <ManageUsers refreshData={refreshData} />}
@@ -314,11 +338,14 @@ const App: React.FC = () => {
         {currentPage === 'home' && (
           <Home 
             posts={posts} 
-            postCategories={postCategories} // Pass categories
+            postCategories={postCategories} 
+            documents={documents} 
+            docCategories={docCategories}
             config={config} 
             gallery={galleryImages}
             blocks={blocks}
             introductions={introductions}
+            staffList={staffList} // Pass Staff List
             onNavigate={navigate} 
           />
         )}
@@ -331,7 +358,7 @@ const App: React.FC = () => {
           <Documents 
               documents={documents} 
               categories={docCategories} 
-              initialCategorySlug="official" 
+              initialCategorySlug={detailId || 'official'} 
           />
         )}
         
@@ -346,25 +373,25 @@ const App: React.FC = () => {
         {currentPage === 'gallery' && <Gallery images={galleryImages} albums={albums} />}
 
         {currentPage === 'news' && (
-          <div className="container mx-auto px-4 py-10">
-            <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
-                <div className="flex items-center mb-8 pb-2 border-b-2 border-blue-900">
-                    <h2 className="text-2xl font-bold text-blue-900 uppercase">Tin tức & Sự kiện</h2>
+          <div className="container mx-auto px-4 py-12">
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center mb-8 pb-3 border-b-2 border-blue-900">
+                    <h2 className="text-3xl font-extrabold text-blue-900 uppercase">Tin tức & Sự kiện</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {posts.filter(p => p.status === 'published').map(post => {
                     const cat = postCategories.find(c => c.slug === post.category);
                     return (
                     <div key={post.id} onClick={() => navigate('news-detail', post.id)} className="group cursor-pointer flex flex-col h-full">
-                    <div className="overflow-hidden rounded mb-3 border border-gray-200">
-                        <img src={post.thumbnail} className="h-48 w-full object-cover transform group-hover:scale-105 transition duration-500" alt={post.title}/>
+                    <div className="overflow-hidden rounded-lg mb-4 border border-gray-200 shadow-sm h-56">
+                        <img src={post.thumbnail} className="h-full w-full object-cover transform group-hover:scale-105 transition duration-500" alt={post.title}/>
                     </div>
-                    <span className={`text-xs font-bold uppercase mb-1 block text-${cat?.color || 'blue'}-600`}>
+                    <span className={`text-xs font-bold uppercase mb-2 block text-${cat?.color || 'blue'}-600 tracking-wide`}>
                         {cat?.name || 'Tin tức'}
                     </span>
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-blue-700 leading-snug line-clamp-2">{post.title}</h3>
-                    <p className="text-gray-700 text-sm line-clamp-2 mb-2 flex-grow">{post.summary}</p>
-                    <div className="text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">{post.date}</div>
+                    <h3 className="font-bold text-xl mb-3 group-hover:text-blue-700 leading-snug line-clamp-2">{post.title}</h3>
+                    <p className="text-base text-gray-600 line-clamp-3 mb-4 flex-grow leading-relaxed">{post.summary}</p>
+                    <div className="text-sm text-gray-400 mt-auto pt-3 border-t border-gray-100">{post.date}</div>
                     </div>
                 )})}
                 </div>
@@ -373,54 +400,54 @@ const App: React.FC = () => {
         )}
 
         {currentPage === 'news-detail' && detailId && (
-          <div className="container mx-auto px-4 py-8">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="container mx-auto px-4 py-12">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8">
                     {(() => {
                       const post = posts.find(p => p.id === detailId);
-                      if (!post) return <div className="p-10 text-center bg-white rounded shadow">Bài viết không tồn tại</div>;
+                      if (!post) return <div className="p-10 text-center bg-white rounded shadow text-lg">Bài viết không tồn tại</div>;
                       const cat = postCategories.find(c => c.slug === post.category);
                       return (
-                        <article className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-200">
-                            <div className="mb-6">
-                              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-4">{post.title}</h1>
-                              <div className="flex flex-wrap items-center gap-4 text-gray-600 text-sm border-b pb-4 border-gray-100">
-                                <span className={`font-bold text-${cat?.color || 'blue'}-700`}>{(cat?.name || post.category).toUpperCase()}</span>
+                        <article className="bg-white p-8 md:p-10 rounded-xl shadow-sm border border-gray-200">
+                            <div className="mb-8">
+                              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-5">{post.title}</h1>
+                              <div className="flex flex-wrap items-center gap-4 text-gray-500 text-sm md:text-base border-b pb-5 border-gray-100">
+                                <span className={`font-bold text-${cat?.color || 'blue'}-700 uppercase`}>{(cat?.name || post.category)}</span>
                                 <span>|</span>
-                                <span className="flex items-center gap-1">{post.date}</span>
+                                <span className="flex items-center gap-1 font-medium text-gray-600">{post.date}</span>
                                 <span>|</span>
-                                <span>Tác giả: {post.author}</span>
+                                <span>Tác giả: <span className="font-medium text-gray-800">{post.author}</span></span>
                                 <span>|</span>
                                 <span>{post.views} lượt xem</span>
                               </div>
                             </div>
                             
-                            <div className="font-semibold text-lg text-gray-800 mb-6 italic bg-gray-50 p-4 border-l-4 border-blue-500 rounded-r">
+                            <div className="font-semibold text-xl text-gray-800 mb-8 italic bg-gray-50 p-6 border-l-4 border-blue-500 rounded-r leading-relaxed">
                               {post.summary}
                             </div>
 
                             <div 
-                              className="prose prose-blue prose-lg max-w-none text-gray-900 leading-relaxed text-justify"
+                              className="prose prose-xl prose-blue max-w-none text-gray-900 leading-loose text-justify"
                               dangerouslySetInnerHTML={{ __html: post.content }}
                             />
                             
                             {post.attachments && post.attachments.length > 0 && (
-                              <div className="mt-8 pt-6 border-t border-gray-200">
-                                <h4 className="font-bold text-gray-900 mb-4 flex items-center bg-gray-100 p-2 rounded"><Paperclip size={18} className="mr-2"/> Tài liệu đính kèm</h4>
-                                <div className="grid grid-cols-1 gap-3">
+                              <div className="mt-10 pt-8 border-t border-gray-200">
+                                <h4 className="font-bold text-gray-900 text-lg mb-5 flex items-center bg-gray-100 p-3 rounded-lg"><Paperclip size={20} className="mr-2"/> Tài liệu đính kèm</h4>
+                                <div className="grid grid-cols-1 gap-4">
                                     {post.attachments.map(att => (
-                                      <div key={att.id} className="flex items-center justify-between p-3 border border-gray-200 rounded hover:bg-blue-50 transition bg-white group">
+                                      <div key={att.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition bg-white group shadow-sm">
                                           <div className="flex items-center overflow-hidden mr-3">
-                                            <div className="bg-blue-100 p-2 rounded mr-3 text-blue-700">
-                                                <FileText size={20}/>
+                                            <div className="bg-blue-100 p-2.5 rounded-lg mr-4 text-blue-700">
+                                                <FileText size={24}/>
                                             </div>
                                             <div>
-                                                <span className="text-sm font-bold text-gray-900 group-hover:text-blue-700 block">{att.name}</span>
-                                                <span className="text-xs text-gray-500 uppercase">{att.fileType || 'FILE'}</span>
+                                                <span className="text-base font-bold text-gray-900 group-hover:text-blue-700 block">{att.name}</span>
+                                                <span className="text-sm text-gray-500 uppercase font-medium">{att.fileType || 'FILE'}</span>
                                             </div>
                                           </div>
-                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600">
-                                              <Download size={20} />
+                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600 p-2 hover:bg-white rounded-full">
+                                              <Download size={24} />
                                           </a>
                                       </div>
                                     ))}
@@ -437,7 +464,9 @@ const App: React.FC = () => {
                       blocks={sidebarBlocks} 
                       posts={posts} 
                       postCategories={postCategories}
-                      documents={documents} 
+                      documents={documents}
+                      docCategories={docCategories}
+                      videos={videos} // Pass Videos
                       onNavigate={navigate} 
                       currentPage="news-detail" 
                     />
@@ -447,26 +476,26 @@ const App: React.FC = () => {
         )}
         
         {currentPage === 'contact' && (
-            <div className="container mx-auto px-4 py-10">
-                <div className="bg-white p-8 rounded shadow border border-gray-200">
-                    <h2 className="text-2xl font-bold mb-6 text-blue-900 border-b pb-2 uppercase">Liên hệ công tác</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <p className="mb-4 text-gray-800"><strong>Địa chỉ:</strong> {config?.address}</p>
-                            <p className="mb-4 text-gray-800"><strong>Điện thoại:</strong> {config?.phone}</p>
-                            <p className="mb-4 text-gray-800"><strong>Email:</strong> {config?.email}</p>
+            <div className="container mx-auto px-4 py-12">
+                <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-200">
+                    <h2 className="text-3xl font-extrabold mb-8 text-blue-900 border-b pb-4 uppercase">Liên hệ công tác</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="space-y-4 text-base">
+                            <p className="text-gray-800"><strong>Địa chỉ:</strong> {config?.address}</p>
+                            <p className="text-gray-800"><strong>Điện thoại:</strong> {config?.phone}</p>
+                            <p className="text-gray-800"><strong>Email:</strong> {config?.email}</p>
                             {config?.mapUrl && (
-                                <div className="mt-4">
-                                    <iframe src={config.mapUrl} width="100%" height="300" style={{border:0}} loading="lazy"></iframe>
+                                <div className="mt-6 rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                                    <iframe src={config.mapUrl} width="100%" height="350" style={{border:0}} loading="lazy"></iframe>
                                 </div>
                             )}
                         </div>
                         <div>
-                            <form className="space-y-4">
-                                <input type="text" placeholder="Họ và tên" className="w-full border p-3 rounded bg-gray-50 text-gray-900"/>
-                                <input type="email" placeholder="Email" className="w-full border p-3 rounded bg-gray-50 text-gray-900"/>
-                                <textarea rows={4} placeholder="Nội dung liên hệ" className="w-full border p-3 rounded bg-gray-50 text-gray-900"></textarea>
-                                <button className="bg-blue-800 text-white px-6 py-3 rounded font-bold uppercase hover:bg-blue-900 transition">Gửi liên hệ</button>
+                            <form className="space-y-5">
+                                <input type="text" placeholder="Họ và tên" className="w-full border p-4 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-base"/>
+                                <input type="email" placeholder="Email" className="w-full border p-4 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-base"/>
+                                <textarea rows={5} placeholder="Nội dung liên hệ" className="w-full border p-4 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-base"></textarea>
+                                <button className="bg-blue-800 text-white px-8 py-4 rounded-lg font-bold uppercase hover:bg-blue-900 transition shadow-lg w-full text-base">Gửi liên hệ</button>
                             </form>
                         </div>
                     </div>
@@ -476,6 +505,14 @@ const App: React.FC = () => {
 
       </main>
       
+      {/* Floating Contact Widget & Scroll To Top */}
+      {config && !currentPage.startsWith('admin') && (
+         <>
+            <FloatingContact config={config} />
+            <ScrollToTop />
+         </>
+      )}
+
       {config && <Footer config={config} />}
     </div>
   );

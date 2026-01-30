@@ -1,15 +1,15 @@
 
 import { supabase } from './supabaseClient';
-import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember, IntroductionArticle, PostCategory } from '../types';
+import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember, IntroductionArticle, PostCategory, Video } from '../types';
 
 // Default Config Fallback
 const DEFAULT_CONFIG: SchoolConfig = {
-  name: 'Trường THPT Mẫu',
-  slogan: 'Website đang được xây dựng',
+  name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
+  slogan: 'Dạy tốt - Học tốt - Rèn luyện tốt',
   logoUrl: '',
   bannerUrl: '',
   principalName: '',
-  address: '',
+  address: 'Xã Suối Lư, Huyện Điện Biên Đông, Tỉnh Điện Biên',
   phone: '',
   email: '',
   hotline: '',
@@ -21,8 +21,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
   homeNewsCount: 6,
   homeShowProgram: true,
   primaryColor: '#1e3a8a',
-  metaTitle: 'Trường học',
-  metaDescription: ''
+  metaTitle: 'Trường PTDTBT TH và THCS Suối Lư',
+  metaDescription: 'Cổng thông tin điện tử Trường Phổ thông dân tộc bán trú Tiểu học và Trung học cơ sở Suối Lư'
 };
 
 export const DatabaseService = {
@@ -95,11 +95,7 @@ export const DatabaseService = {
   // --- POST CATEGORIES ---
   getPostCategories: async (): Promise<PostCategory[]> => {
      const { data } = await supabase.from('post_categories').select('*').order('order_index', { ascending: true });
-     
-     if (!data || data.length === 0) {
-         return [];
-     }
-
+     if (!data || data.length === 0) return [];
      return data.map((c: any) => ({
          id: c.id,
          name: c.name,
@@ -123,7 +119,6 @@ export const DatabaseService = {
       } else {
           result = await supabase.from('post_categories').insert(dbCat);
       }
-
       if (result.error) throw new Error(result.error.message);
   },
 
@@ -359,6 +354,40 @@ export const DatabaseService = {
      await supabase.from('gallery_images').delete().eq('id', id);
   },
 
+  // --- VIDEOS ---
+  getVideos: async (): Promise<Video[]> => {
+    const { data } = await supabase.from('videos').select('*').order('order_index', { ascending: true });
+    return (data || []).map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        youtubeUrl: v.youtube_url,
+        youtubeId: v.youtube_id,
+        thumbnail: v.thumbnail,
+        isVisible: v.is_visible,
+        order: v.order_index
+    }));
+  },
+
+  saveVideo: async (video: Video) => {
+    const dbVideo = {
+        title: video.title,
+        youtube_url: video.youtubeUrl,
+        youtube_id: video.youtubeId,
+        thumbnail: video.thumbnail,
+        is_visible: video.isVisible,
+        order_index: video.order
+    };
+    if (video.id && video.id.length > 10) {
+        await supabase.from('videos').update(dbVideo).eq('id', video.id);
+    } else {
+        await supabase.from('videos').insert(dbVideo);
+    }
+  },
+
+  deleteVideo: async (id: string) => {
+    await supabase.from('videos').delete().eq('id', id);
+  },
+
   // --- BLOCKS & MENU ---
   getBlocks: async (): Promise<DisplayBlock[]> => {
       const { data } = await supabase.from('display_blocks').select('*').order('order_index', { ascending: true });
@@ -430,7 +459,7 @@ export const DatabaseService = {
       await supabase.from('menu_items').delete().eq('id', id);
   },
 
-  // --- USERS ---
+  // --- USERS & REGISTRATION ---
   getUsers: async (): Promise<User[]> => {
       const { data } = await supabase.from('user_profiles').select('*');
       return (data || []).map((u: any) => ({
@@ -444,20 +473,32 @@ export const DatabaseService = {
 
   saveUser: async (user: User) => {
       const dbUser = {
+          id: user.id.length < 10 ? undefined : user.id, // ID must match auth ID if provided
           username: user.username,
           full_name: user.fullName,
           role: user.role
       };
+      // Note: Usually we use upsert with ID from auth.
       if (user.id && user.id.length > 10) {
-          await supabase.from('user_profiles').update(dbUser).eq('id', user.id);
+          await supabase.from('user_profiles').upsert(dbUser);
       }
+  },
+
+  registerUserProfile: async (userId: string, fullName: string, username: string) => {
+      const { error } = await supabase.from('user_profiles').insert({
+          id: userId,
+          full_name: fullName,
+          username: username,
+          role: 'GUEST'
+      });
+      if (error) throw error;
   },
 
   deleteUser: async (id: string) => {
       await supabase.from('user_profiles').delete().eq('id', id);
   },
 
-  // --- STAFF (FIXED ERROR HANDLING) ---
+  // --- STAFF ---
   getStaff: async (): Promise<StaffMember[]> => {
     const { data } = await supabase.from('staff_members').select('*').order('order_index', { ascending: true });
     return (data || []).map((s: any) => ({
@@ -475,7 +516,7 @@ export const DatabaseService = {
     const dbStaff = {
         full_name: staff.fullName,
         position: staff.position,
-        party_date: staff.partyDate || null, // Handle empty date string
+        party_date: staff.partyDate || null, 
         email: staff.email,
         avatar_url: staff.avatarUrl,
         order_index: staff.order

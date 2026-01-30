@@ -156,13 +156,13 @@ export const ManageBlocks: React.FC = () => {
                                 {block.targetPage !== 'all' && (
                                     <span className="bg-yellow-100 text-yellow-800 px-1 rounded font-bold">{block.targetPage}</span>
                                 )}
-                                {/* Display Source Category if not HTML/Stats/Docs */}
-                                {block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs' && (
+                                {/* Display Source Category if not HTML/Stats/Docs/Staff */}
+                                {block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs' && block.type !== 'doc_cats' && block.type !== 'video' && block.type !== 'calendar' && block.type !== 'staff_list' && (
                                     <span className="flex items-center text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                                         <Layers size={10} className="mr-1"/> {getCategoryName(block.htmlContent)}
                                     </span>
                                 )}
-                                {block.type !== 'html' && block.type !== 'stats' && (
+                                {block.type !== 'html' && block.type !== 'stats' && block.type !== 'doc_cats' && block.type !== 'video' && block.type !== 'calendar' && (
                                     <span className="flex items-center text-gray-600 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                                         <Hash size={10} className="mr-1"/> {block.itemCount}
                                     </span>
@@ -198,11 +198,11 @@ export const ManageBlocks: React.FC = () => {
                     )}
 
                     {/* Edit Category Source & Item Count */}
-                    {block.type !== 'html' && block.type !== 'stats' && block.isVisible && (
+                    {block.type !== 'html' && block.type !== 'stats' && block.type !== 'doc_cats' && block.type !== 'video' && block.type !== 'calendar' && block.isVisible && (
                         <div className="mt-2 pt-2 border-t border-gray-200">
                             {editingContentId === block.id ? (
                                 <div className="space-y-3 bg-indigo-50 p-2 rounded">
-                                    {block.type !== 'docs' && (
+                                    {block.type !== 'docs' && block.type !== 'staff_list' && (
                                         <div>
                                             <label className="text-xs font-bold text-gray-700 block mb-1">Nguồn tin / Chuyên mục:</label>
                                             <select 
@@ -237,7 +237,7 @@ export const ManageBlocks: React.FC = () => {
                             ) : (
                                 <button onClick={() => startEditContent(block)} className="text-xs text-gray-500 flex items-center hover:text-blue-600 font-medium group-hover:text-blue-600 transition">
                                     <Edit2 size={12} className="mr-1"/> 
-                                    {block.type === 'docs' ? 'Cấu hình số lượng hiển thị' : 'Cấu hình Chuyên mục & Số lượng'}
+                                    {block.type === 'staff_list' ? 'Cấu hình số lượng hiển thị' : (block.type === 'docs' ? 'Cấu hình số lượng hiển thị' : 'Cấu hình Chuyên mục & Số lượng')}
                                 </button>
                             )}
                         </div>
@@ -282,14 +282,18 @@ export const ManageBlocks: React.FC = () => {
                  <option value="list">Tin tức (Danh sách dọc)</option>
                  <option value="highlight">Tin tức (Nổi bật/Focus)</option>
                  <option value="hero">Slide ảnh lớn (Hero)</option>
+                 <option value="staff_list">Danh sách Cán bộ (Mới)</option>
+                 <option value="calendar">Lịch vạn niên / Lịch tháng</option>
+                 <option value="doc_cats">Danh mục văn bản (Folder)</option>
+                 <option value="video">Thư viện Video (Youtube)</option>
+                 <option value="docs">Văn bản mới nhất</option>
                  <option value="stats">Thống kê truy cập</option>
-                 <option value="docs">Tài liệu mới nhất</option>
                  <option value="html">Mã HTML Tùy chỉnh</option>
                </select>
             </div>
             <div>
                 {/* Conditionally render Category Source or Target Page based on block type */}
-                {newBlock.type !== 'html' && newBlock.type !== 'stats' && newBlock.type !== 'docs' ? (
+                {newBlock.type !== 'html' && newBlock.type !== 'stats' && newBlock.type !== 'docs' && newBlock.type !== 'doc_cats' && newBlock.type !== 'video' && newBlock.type !== 'calendar' && newBlock.type !== 'staff_list' ? (
                      <>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Nguồn tin / Chuyên mục</label>
                         <select 

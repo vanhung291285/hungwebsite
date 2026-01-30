@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SchoolDocument, DocumentCategory } from '../types';
 import { FileText, Download, Search, Filter, FolderOpen, Eye, X, Maximize2 } from 'lucide-react';
@@ -76,36 +77,41 @@ export const Documents: React.FC<DocumentsProps> = ({ documents, categories, ini
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-100 text-gray-700 text-sm font-bold uppercase border-b border-gray-300">
-                                <th className="px-6 py-3 border-r w-32">Số hiệu</th>
-                                <th className="px-6 py-3 border-r w-32">Ngày BH</th>
+                                <th className="px-6 py-3 border-r w-32 whitespace-nowrap">Số hiệu</th>
+                                <th className="px-6 py-3 border-r w-32 whitespace-nowrap">Ngày BH</th>
                                 <th className="px-6 py-3 border-r">Trích yếu nội dung</th>
-                                <th className="px-6 py-3 text-center w-32">Thao tác</th>
+                                <th className="px-6 py-3 text-center w-32 whitespace-nowrap">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 text-sm">
                                 {filteredDocs.map((doc, index) => {
                                     const isImage = doc.downloadUrl && doc.downloadUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) || doc.downloadUrl.startsWith('data:image');
                                     return (
-                                        <tr key={doc.id} className={index % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}>
-                                            <td className="px-6 py-4 font-mono text-blue-800 font-medium border-r">{doc.number}</td>
-                                            <td className="px-6 py-4 border-r text-gray-600">{doc.date}</td>
-                                            <td className="px-6 py-4 border-r text-gray-800 font-medium">
+                                        <tr key={doc.id} className={`group transition ${index % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}`}>
+                                            <td className="px-6 py-4 font-mono text-blue-700 font-bold border-r align-middle">
+                                                {doc.number}
+                                            </td>
+                                            <td className="px-6 py-4 border-r text-gray-600 align-middle">
+                                                {doc.date}
+                                            </td>
+                                            <td className="px-6 py-4 border-r align-middle">
                                                 <div 
-                                                    className="cursor-pointer hover:text-blue-600 transition"
+                                                    className="cursor-pointer font-semibold text-gray-900 group-hover:text-blue-700 transition-colors duration-200 line-clamp-2 leading-snug"
                                                     onClick={() => handlePreview(doc)}
+                                                    title={doc.title}
                                                 >
                                                     {doc.title}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
+                                            <td className="px-6 py-4 text-center align-middle">
+                                                <div className="flex items-center justify-center gap-3">
                                                     {/* Preview Button */}
                                                     <button 
                                                         onClick={() => handlePreview(doc)}
-                                                        className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition"
+                                                        className="text-blue-600 hover:text-blue-800 p-1.5 rounded-full hover:bg-blue-100 transition"
                                                         title="Xem trước"
                                                     >
-                                                        <Eye size={18} />
+                                                        <Eye size={20} />
                                                     </button>
                                                     
                                                     {/* Download Button */}
@@ -114,10 +120,10 @@ export const Documents: React.FC<DocumentsProps> = ({ documents, categories, ini
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         download={doc.downloadUrl.startsWith('data:') ? `${doc.number}.pdf` : undefined}
-                                                        className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition"
+                                                        className="text-green-600 hover:text-green-800 p-1.5 rounded-full hover:bg-green-100 transition"
                                                         title="Tải về máy"
                                                     >
-                                                        <Download size={18} />
+                                                        <Download size={20} />
                                                     </a>
                                                 </div>
                                             </td>

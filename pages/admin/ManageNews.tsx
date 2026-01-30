@@ -5,7 +5,8 @@ import { DatabaseService } from '../../services/database';
 import { generateSchoolContent } from '../../services/geminiService';
 import { 
   Plus, Edit, Trash2, Search, Save, Loader2, Image, Bold, Italic, List, Type, 
-  RotateCcw, UploadCloud, Check, Link as LinkIcon, Paperclip, FileText, X
+  RotateCcw, UploadCloud, Check, Link as LinkIcon, Paperclip, FileText, X,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline, Heading1, Heading2, Heading3
 } from 'lucide-react';
 
 interface ManageNewsProps {
@@ -172,11 +173,23 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
     }, 0);
   };
 
+  const handleAlignment = (align: 'left' | 'center' | 'right' | 'justify') => {
+      insertTag(`<div style="text-align: ${align};">\n`, `\n</div>`);
+  };
+
   const insertImageToContent = (file: File) => {
+    // Check file size limit for content images (limit to 1MB to avoid massive base64 strings lag)
+    if (file.size > 1024 * 1024) {
+        alert("Ảnh quá lớn (>1MB)! Việc chèn trực tiếp vào bài viết sẽ làm chậm hệ thống. Vui lòng nén ảnh hoặc dùng Link ảnh.");
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = (x) => {
       if (x.target?.result) {
-        const imgTag = `<img src="${x.target.result}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0;" alt="Image"/>`;
+        // Wrap image in a centered div with responsive styles
+        // Chèn ảnh dạng Base64 vào thẻ img
+        const imgTag = `\n<div style="text-align: center;"><img src="${x.target.result}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" alt="Image"/></div>\n`;
         insertTag(imgTag);
       }
     };
@@ -186,26 +199,42 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   const insertImageUrl = () => {
     const url = prompt("Nhập đường dẫn ảnh (URL):");
     if (url) {
-        const imgTag = `<img src="${url}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0;" alt="Image"/>`;
+        const imgTag = `\n<div style="text-align: center;"><img src="${url}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0;" alt="Image"/></div>\n`;
         insertTag(imgTag);
     }
   };
 
   const EditorToolbar = () => (
     <div className="flex flex-wrap gap-1 p-2 bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
+       {/* Group 1: Text Style */}
        <div className="flex items-center space-x-1 mr-2 border-r pr-2 border-gray-300">
-         <button onClick={() => insertTag('<b>', '</b>')} className="p-1.5 hover:bg-gray-200 rounded" title="In đậm"><Bold size={16}/></button>
-         <button onClick={() => insertTag('<i>', '</i>')} className="p-1.5 hover:bg-gray-200 rounded" title="In nghiêng"><Italic size={16}/></button>
+         <button onClick={() => insertTag('<b>', '</b>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="In đậm (Bold)"><Bold size={16}/></button>
+         <button onClick={() => insertTag('<i>', '</i>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="In nghiêng (Italic)"><Italic size={16}/></button>
+         <button onClick={() => insertTag('<u>', '</u>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Gạch chân (Underline)"><Underline size={16}/></button>
        </div>
+
+       {/* Group 2: Alignment */}
        <div className="flex items-center space-x-1 mr-2 border-r pr-2 border-gray-300">
-         <button onClick={() => insertTag('<h3>', '</h3>')} className="p-1.5 hover:bg-gray-200 rounded" title="Tiêu đề H3"><Type size={16}/></button>
-         <button onClick={() => insertTag('<ul>\n  <li>', '</li>\n</ul>')} className="p-1.5 hover:bg-gray-200 rounded" title="Danh sách"><List size={16}/></button>
+         <button onClick={() => handleAlignment('left')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Căn trái"><AlignLeft size={16}/></button>
+         <button onClick={() => handleAlignment('center')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Căn giữa"><AlignCenter size={16}/></button>
+         <button onClick={() => handleAlignment('right')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Căn phải"><AlignRight size={16}/></button>
+         <button onClick={() => handleAlignment('justify')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Căn đều"><AlignJustify size={16}/></button>
        </div>
+
+       {/* Group 3: Headings/Structure */}
+       <div className="flex items-center space-x-1 mr-2 border-r pr-2 border-gray-300">
+         <button onClick={() => insertTag('<h2>', '</h2>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700 flex items-center font-bold text-xs" title="Tiêu đề lớn (H2)">H2</button>
+         <button onClick={() => insertTag('<h3>', '</h3>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700 flex items-center font-bold text-xs" title="Tiêu đề vừa (H3)">H3</button>
+         <button onClick={() => insertTag('<h4>', '</h4>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700 flex items-center font-bold text-xs" title="Tiêu đề nhỏ (H4)">H4</button>
+         <button onClick={() => insertTag('<ul>\n  <li>', '</li>\n</ul>')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Danh sách"><List size={16}/></button>
+       </div>
+
+       {/* Group 4: Media - IMAGE INSERT BUTTON */}
        <div className="flex items-center space-x-1 text-gray-700">
-          <button onClick={insertImageUrl} className="p-1.5 hover:bg-gray-200 rounded flex items-center" title="Chèn ảnh từ Link URL">
+          <button onClick={insertImageUrl} className="p-1.5 hover:bg-gray-200 rounded flex items-center" title="Chèn ảnh từ Link URL (Khuyên dùng)">
              <LinkIcon size={16}/>
           </button>
-          <label className="p-1.5 hover:bg-gray-200 rounded cursor-pointer flex items-center" title="Tải ảnh lên từ máy">
+          <label className="p-1.5 hover:bg-gray-200 rounded cursor-pointer flex items-center text-blue-700 hover:text-blue-800 hover:bg-blue-50" title="Chèn ảnh từ máy tính (Giới hạn < 1MB)">
              <Image size={16}/>
              <input 
                 type="file" 

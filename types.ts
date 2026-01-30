@@ -18,7 +18,7 @@ export interface DisplayBlock {
   id: string;
   name: string;
   position: 'main' | 'sidebar';
-  type: 'hero' | 'grid' | 'list' | 'highlight' | 'docs' | 'html' | 'stats'; 
+  type: 'hero' | 'grid' | 'list' | 'highlight' | 'docs' | 'html' | 'stats' | 'doc_cats' | 'video' | 'calendar' | 'staff_list'; 
   order: number;
   itemCount: number;
   isVisible: boolean;
@@ -106,6 +106,16 @@ export interface GalleryImage {
   albumId: string; // Link to album
 }
 
+export interface Video {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+  youtubeId: string;
+  thumbnail: string; // Auto-generated from youtube
+  isVisible: boolean;
+  order: number;
+}
+
 export interface MenuItem {
   id: string;
   label: string;
@@ -162,12 +172,14 @@ export type PageRoute =
   | 'contact' 
   | 'staff'           
   | 'login' 
+  | 'register'        // ADDED REGISTER ROUTE
   | 'admin-dashboard' 
   | 'admin-news' 
-  | 'admin-categories' // NEW
+  | 'admin-categories' 
   | 'admin-blocks'
   | 'admin-docs'
   | 'admin-gallery'
+  | 'admin-videos' 
   | 'admin-users'
   | 'admin-staff'
   | 'admin-intro'
