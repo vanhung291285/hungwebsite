@@ -128,7 +128,9 @@ export interface SchoolConfig {
   facebook: string;
   youtube: string;
   website: string;
-  showWelcomeBanner: boolean;
+  showWelcomeBanner: boolean; // Controls Hero Block visibility
+  homeNewsCount: number;      // NEW: Controls Grid Block item count globally
+  homeShowProgram: boolean;   // NEW: Controls Category/Highlight Blocks visibility
   primaryColor: string;
   metaTitle: string;
   metaDescription: string;

@@ -72,7 +72,6 @@ export const Header: React.FC<HeaderProps> = ({ config, menuItems, onNavigate, a
                     )}
                     </div>
                     <div className="flex flex-col">
-                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1 hidden md:block">Phòng Giáo Dục & Đào Tạo</h2>
                         <h1 className="text-xl md:text-3xl font-extrabold uppercase leading-tight text-blue-900 drop-shadow-sm font-serif tracking-tight">
                             {config.name}
                         </h1>

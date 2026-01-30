@@ -3,15 +3,15 @@ import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, U
 
 const STORAGE_KEYS = {
   POSTS: 'vinaedu_posts_v5', 
-  CONFIG: 'vinaedu_config_v4', // Bumped version for favicon
+  CONFIG: 'vinaedu_config_v4', 
   DOCS: 'vinaedu_docs_v2', 
   DOC_CATS: 'vinaedu_doc_cats',
   USERS: 'vinaedu_users_v2',
   GALLERY: 'vinaedu_gallery_v2', 
   ALBUMS: 'vinaedu_albums_v1',   
-  MENU: 'vinaedu_menu',
+  MENU: 'vinaedu_menu_v2', // Bumped version to add Staff menu
   BLOCKS: 'vinaedu_blocks_v3', 
-  INIT: 'vinaedu_initialized_v14', // Bumped version to force re-init if needed
+  INIT: 'vinaedu_initialized_v15', // Bumped version to force re-init
   SESSION: 'vinaedu_session_user'
 };
 
@@ -38,6 +38,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
 
   // Display
   showWelcomeBanner: true,
+  homeNewsCount: 6,
+  homeShowProgram: true,
   primaryColor: '#1e3a8a', // blue-900
 
   // SEO
@@ -222,9 +224,10 @@ const DEFAULT_USERS: User[] = [
 const DEFAULT_MENU: MenuItem[] = [
   { id: '1', label: 'Trang chủ', path: 'home', order: 1 },
   { id: '2', label: 'Giới thiệu', path: 'intro', order: 2 },
-  { id: '3', label: 'Tin tức', path: 'news', order: 3 },
-  { id: '4', label: 'Văn bản', path: 'documents', order: 4 },
-  { id: '5', label: 'Thư viện', path: 'gallery', order: 5 },
+  { id: '6', label: 'Đội ngũ GV', path: 'staff', order: 3 }, // Added Staff Page
+  { id: '3', label: 'Tin tức', path: 'news', order: 4 },
+  { id: '4', label: 'Văn bản', path: 'documents', order: 5 },
+  { id: '5', label: 'Thư viện', path: 'gallery', order: 6 },
 ];
 
 const DEFAULT_ALBUMS: GalleryAlbum[] = [

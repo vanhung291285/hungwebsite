@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SchoolConfig } from '../../types';
 import { DatabaseService } from '../../services/database';
@@ -5,7 +6,7 @@ import { Settings, Globe, Phone, Share2, Search, Save, Layout, Upload, Link as L
 
 export const ManageSettings: React.FC = () => {
   const [config, setConfig] = useState<SchoolConfig | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'contact' | 'social' | 'display' | 'seo'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'home' | 'contact' | 'social' | 'display' | 'seo'>('general');
 
   useEffect(() => {
     DatabaseService.getConfig().then(setConfig);
@@ -62,8 +63,9 @@ export const ManageSettings: React.FC = () => {
 
   const tabs = [
     { id: 'general', label: 'Thông tin chung', icon: Settings },
+    { id: 'home', label: 'Trang chủ', icon: Layout },
     { id: 'contact', label: 'Liên hệ', icon: Phone },
-    { id: 'display', label: 'Hiển thị', icon: Layout },
+    { id: 'display', label: 'Giao diện', icon: ImageIcon },
     { id: 'social', label: 'Mạng xã hội', icon: Share2 },
     { id: 'seo', label: 'Cấu hình SEO', icon: Search },
   ];
@@ -206,47 +208,67 @@ export const ManageSettings: React.FC = () => {
                        </div>
                      )}
                   </div>
-
-                  <div className="border-t pt-4">
-                     <label className="block text-sm font-bold text-gray-900 mb-2">Ảnh Banner Mặc định (Trang chủ)</label>
-                     
-                     <div className="flex flex-col gap-3">
-                        {/* File Upload Option */}
-                        <div className="relative border border-gray-300 border-dashed rounded-lg p-4 bg-gray-50 hover:bg-blue-50 transition cursor-pointer group text-center">
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                onChange={handleBannerUpload}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <div className="flex flex-col items-center justify-center text-gray-500 group-hover:text-blue-600">
-                                <ImageIcon size={24} className="mb-2"/>
-                                <span className="text-sm font-bold">Nhấn để tải Banner từ máy tính</span>
-                            </div>
-                        </div>
-
-                        {/* URL Input Fallback */}
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">URL:</span>
-                            <input 
-                                type="text" 
-                                className="w-full border p-2 pl-10 rounded text-sm text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-blue-200 outline-none"
-                                value={config.bannerUrl}
-                                onChange={e => setConfig({...config, bannerUrl: e.target.value})}
-                                placeholder="Hoặc dán liên kết ảnh vào đây..."
-                            />
-                        </div>
-                     </div>
-
-                     {config.bannerUrl && (
-                        <div className="mt-3 relative group">
-                            <img src={config.bannerUrl} alt="Banner Preview" className="w-full h-32 object-cover border rounded bg-gray-50 shadow-sm" />
-                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">Xem trước</div>
-                        </div>
-                     )}
-                  </div>
                </div>
             </div>
+          )}
+
+          {/* TAB: HOME DISPLAY */}
+          {activeTab === 'home' && (
+             <div className="space-y-6 max-w-3xl">
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded mb-4 text-sm text-blue-800">
+                    Cấu hình hiển thị các khối nội dung trên trang chủ. Bạn cũng có thể sắp xếp thứ tự chi tiết trong module "Cấu hình Khối".
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded bg-white hover:bg-gray-50">
+                   <div>
+                      <label htmlFor="showBanner" className="block font-bold text-gray-900">Hiển thị Banner Slide (Tin nổi bật)</label>
+                      <p className="text-sm text-gray-500">Bật/tắt khối hình ảnh lớn (Hero Slider) ở đầu trang chủ.</p>
+                   </div>
+                   <div className="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+                       <input 
+                         type="checkbox" 
+                         id="showBanner"
+                         className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                         checked={config.showWelcomeBanner}
+                         onChange={e => setConfig({...config, showWelcomeBanner: e.target.checked})}
+                         style={{right: config.showWelcomeBanner ? '0' : 'auto', left: config.showWelcomeBanner ? 'auto' : '0', borderColor: config.showWelcomeBanner ? '#2563eb' : '#d1d5db'}}
+                       />
+                       <label htmlFor="showBanner" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${config.showWelcomeBanner ? 'bg-blue-600' : 'bg-gray-300'}`}></label>
+                   </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded bg-white hover:bg-gray-50">
+                   <div>
+                      <label className="block font-bold text-gray-900">Số lượng tin hiển thị (Khối Tin mới)</label>
+                      <p className="text-sm text-gray-500">Số bài viết tối đa hiển thị trong khối "Tin tức - Sự kiện".</p>
+                   </div>
+                   <input 
+                      type="number" 
+                      min="1" max="20"
+                      className="w-20 border p-2 rounded text-center font-bold text-gray-900"
+                      value={config.homeNewsCount}
+                      onChange={e => setConfig({...config, homeNewsCount: parseInt(e.target.value) || 4})}
+                   />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded bg-white hover:bg-gray-50">
+                   <div>
+                      <label htmlFor="showProgram" className="block font-bold text-gray-900">Hiển thị Khối Chuyên mục / Hoạt động</label>
+                      <p className="text-sm text-gray-500">Bật/tắt các khối tin theo chuyên mục (VD: Hoạt động ngoại khóa, Tiêu điểm...).</p>
+                   </div>
+                   <div className="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+                       <input 
+                         type="checkbox" 
+                         id="showProgram"
+                         className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                         checked={config.homeShowProgram}
+                         onChange={e => setConfig({...config, homeShowProgram: e.target.checked})}
+                         style={{right: config.homeShowProgram ? '0' : 'auto', left: config.homeShowProgram ? 'auto' : '0', borderColor: config.homeShowProgram ? '#2563eb' : '#d1d5db'}}
+                       />
+                       <label htmlFor="showProgram" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${config.homeShowProgram ? 'bg-blue-600' : 'bg-gray-300'}`}></label>
+                   </div>
+                </div>
+             </div>
           )}
 
           {/* TAB: CONTACT */}
@@ -296,18 +318,43 @@ export const ManageSettings: React.FC = () => {
           {/* TAB: DISPLAY */}
           {activeTab === 'display' && (
              <div className="space-y-6">
-                <div className="flex items-center space-x-4 p-4 border rounded bg-gray-50">
-                   <input 
-                     type="checkbox" 
-                     id="showBanner"
-                     className="w-6 h-6 text-blue-600 rounded bg-white"
-                     checked={config.showWelcomeBanner}
-                     onChange={e => setConfig({...config, showWelcomeBanner: e.target.checked})}
-                   />
-                   <div>
-                      <label htmlFor="showBanner" className="block font-bold text-gray-900">Hiển thị Banner Chào mừng</label>
-                      <p className="text-sm text-gray-500">Bật/tắt khối hình ảnh lớn (Hero Banner) ở ngay đầu trang chủ.</p>
+                <div>
+                   <label className="block text-sm font-bold text-gray-900 mb-2">Ảnh Banner Mặc định (Trang chủ)</label>
+                   
+                   <div className="flex flex-col gap-3">
+                      {/* File Upload Option */}
+                      <div className="relative border border-gray-300 border-dashed rounded-lg p-4 bg-gray-50 hover:bg-blue-50 transition cursor-pointer group text-center">
+                          <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleBannerUpload}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <div className="flex flex-col items-center justify-center text-gray-500 group-hover:text-blue-600">
+                              <ImageIcon size={24} className="mb-2"/>
+                              <span className="text-sm font-bold">Nhấn để tải Banner từ máy tính</span>
+                          </div>
+                      </div>
+
+                      {/* URL Input Fallback */}
+                      <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">URL:</span>
+                          <input 
+                              type="text" 
+                              className="w-full border p-2 pl-10 rounded text-sm text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-blue-200 outline-none"
+                              value={config.bannerUrl}
+                              onChange={e => setConfig({...config, bannerUrl: e.target.value})}
+                              placeholder="Hoặc dán liên kết ảnh vào đây..."
+                          />
+                      </div>
                    </div>
+
+                   {config.bannerUrl && (
+                      <div className="mt-3 relative group">
+                          <img src={config.bannerUrl} alt="Banner Preview" className="w-full h-32 object-cover border rounded bg-gray-50 shadow-sm" />
+                          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">Xem trước</div>
+                      </div>
+                   )}
                 </div>
 
                 <div>

@@ -41,6 +41,8 @@ const FALLBACK_CONFIG: SchoolConfig = {
   youtube: '',
   website: '',
   showWelcomeBanner: false,
+  homeNewsCount: 6,
+  homeShowProgram: false,
   primaryColor: '#1e3a8a',
   metaTitle: 'Trường học',
   metaDescription: ''

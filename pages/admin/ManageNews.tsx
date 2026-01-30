@@ -5,7 +5,7 @@ import { DatabaseService } from '../../services/database';
 import { generateSchoolContent } from '../../services/geminiService';
 import { 
   Plus, Edit, Trash2, Search, Save, Loader2, Image, Bold, Italic, List, Type, 
-  RotateCcw, UploadCloud, Check
+  RotateCcw, UploadCloud, Check, Link as LinkIcon, Paperclip, FileText, X
 } from 'lucide-react';
 
 interface ManageNewsProps {
@@ -22,8 +22,10 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   const [tagsInput, setTagsInput] = useState('');
   
   // Attachments State
+  const [attachMode, setAttachMode] = useState<'link' | 'file'>('file');
   const [attachUrl, setAttachUrl] = useState('');
   const [attachName, setAttachName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Editor Ref
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -81,6 +83,69 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
     }
   };
 
+  // --- ATTACHMENT FUNCTIONS ---
+  const handleAddLinkAttachment = () => {
+      if (!attachName || !attachUrl) return alert("Vui lòng nhập tên và đường dẫn file.");
+      
+      const newAtt: Attachment = {
+          id: `att_${Date.now()}`,
+          name: attachName,
+          url: attachUrl,
+          type: 'link',
+          fileType: 'link'
+      };
+
+      setCurrentPost(prev => ({
+          ...prev,
+          attachments: [...(prev.attachments || []), newAtt]
+      }));
+
+      setAttachName('');
+      setAttachUrl('');
+  };
+
+  const handleUploadFileAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          
+          // Limit size 5MB
+          if (file.size > 5 * 1024 * 1024) {
+              alert("File quá lớn. Vui lòng chọn file nhỏ hơn 5MB");
+              return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (x) => {
+              if (x.target?.result) {
+                  const extension = file.name.split('.').pop()?.toLowerCase() || 'file';
+                  const newAtt: Attachment = {
+                      id: `att_${Date.now()}`,
+                      name: file.name,
+                      url: x.target!.result as string,
+                      type: 'file',
+                      fileType: extension
+                  };
+
+                  setCurrentPost(prev => ({
+                      ...prev,
+                      attachments: [...(prev.attachments || []), newAtt]
+                  }));
+              }
+          };
+          reader.readAsDataURL(file);
+          
+          // Reset input
+          e.target.value = '';
+      }
+  };
+
+  const removeAttachment = (id: string) => {
+      setCurrentPost(prev => ({
+          ...prev,
+          attachments: prev.attachments?.filter(a => a.id !== id) || []
+      }));
+  };
+
   // --- EDITOR FUNCTIONS ---
   const insertTag = (startTag: string, endTag: string = '') => {
     const textarea = editorRef.current;
@@ -118,6 +183,14 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
     reader.readAsDataURL(file);
   };
 
+  const insertImageUrl = () => {
+    const url = prompt("Nhập đường dẫn ảnh (URL):");
+    if (url) {
+        const imgTag = `<img src="${url}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0;" alt="Image"/>`;
+        insertTag(imgTag);
+    }
+  };
+
   const EditorToolbar = () => (
     <div className="flex flex-wrap gap-1 p-2 bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
        <div className="flex items-center space-x-1 mr-2 border-r pr-2 border-gray-300">
@@ -129,7 +202,10 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
          <button onClick={() => insertTag('<ul>\n  <li>', '</li>\n</ul>')} className="p-1.5 hover:bg-gray-200 rounded" title="Danh sách"><List size={16}/></button>
        </div>
        <div className="flex items-center space-x-1 text-gray-700">
-          <label className="p-1.5 hover:bg-gray-200 rounded cursor-pointer flex items-center" title="Chèn ảnh">
+          <button onClick={insertImageUrl} className="p-1.5 hover:bg-gray-200 rounded flex items-center" title="Chèn ảnh từ Link URL">
+             <LinkIcon size={16}/>
+          </button>
+          <label className="p-1.5 hover:bg-gray-200 rounded cursor-pointer flex items-center" title="Tải ảnh lên từ máy">
              <Image size={16}/>
              <input 
                 type="file" 
@@ -215,81 +291,84 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
           
           <div className="flex flex-col lg:flex-row gap-4">
             {/* LEFT COLUMN - MAIN CONTENT */}
-            <div className="flex-1 bg-white p-6 rounded shadow-sm border border-gray-200">
+            <div className="flex-1 space-y-4">
                
-               {/* Title */}
-               <div className="grid grid-cols-12 gap-4 mb-4 items-center">
-                  <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Tiêu đề: <span className="text-red-500">*</span></label>
-                  <div className="col-span-12 md:col-span-10">
-                     <input 
-                       type="text" 
-                       className="w-full border border-gray-300 p-2 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white text-gray-900"
-                       value={currentPost.title}
-                       onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
-                       onBlur={generateSlug}
-                     />
-                     <div className="text-xs text-red-500 mt-1">Số ký tự: {currentPost.title?.length || 0}. Nên nhập tối đa 65 ký tự</div>
+               {/* 1. General Info */}
+               <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
+                  {/* Title */}
+                  <div className="grid grid-cols-12 gap-4 mb-4 items-center">
+                      <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Tiêu đề: <span className="text-red-500">*</span></label>
+                      <div className="col-span-12 md:col-span-10">
+                        <input 
+                          type="text" 
+                          className="w-full border border-gray-300 p-2 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white text-gray-900"
+                          value={currentPost.title}
+                          onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
+                          onBlur={generateSlug}
+                        />
+                        <div className="text-xs text-red-500 mt-1">Số ký tự: {currentPost.title?.length || 0}. Nên nhập tối đa 65 ký tự</div>
+                      </div>
+                  </div>
+
+                  {/* Slug */}
+                  <div className="grid grid-cols-12 gap-4 mb-4 items-center">
+                      <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Liên kết tĩnh:</label>
+                      <div className="col-span-12 md:col-span-10 flex gap-2">
+                        <input 
+                            type="text" 
+                            className="flex-1 border border-gray-300 p-2 rounded bg-gray-50 text-gray-600 outline-none"
+                            value={currentPost.slug}
+                            readOnly
+                        />
+                        <button onClick={generateSlug} className="p-2 border border-gray-300 rounded hover:bg-gray-100" title="Tạo lại slug"><RotateCcw size={16}/></button>
+                      </div>
+                  </div>
+
+                  {/* Thumbnail */}
+                  <div className="grid grid-cols-12 gap-4 mb-4 items-center">
+                      <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Hình minh họa:</label>
+                      <div className="col-span-12 md:col-span-10 flex gap-2">
+                        <input 
+                            type="text" 
+                            className="flex-1 border border-gray-300 p-2 rounded bg-white text-gray-900 outline-none"
+                            value={currentPost.thumbnail}
+                            onChange={e => setCurrentPost({...currentPost, thumbnail: e.target.value})}
+                            placeholder="https://..."
+                        />
+                        <label className="bg-cyan-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-cyan-600 text-xs font-bold flex items-center shadow-sm">
+                            <UploadCloud size={16} className="mr-1"/> Browse server
+                            <input type="file" className="hidden" onChange={handleImageUpload}/>
+                        </label>
+                      </div>
+                  </div>
+
+                  {/* Caption */}
+                  <div className="grid grid-cols-12 gap-4 mb-4 items-center">
+                      <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Chú thích cho hình:</label>
+                      <div className="col-span-12 md:col-span-10">
+                        <input 
+                            type="text" 
+                            className="w-full border border-gray-300 p-2 rounded bg-white text-gray-900 outline-none"
+                            value={currentPost.imageCaption || ''}
+                            onChange={e => setCurrentPost({...currentPost, imageCaption: e.target.value})}
+                        />
+                      </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="mb-2">
+                      <label className="block font-bold text-gray-700 mb-2">Giới thiệu ngắn gọn <span className="text-xs font-normal italic text-gray-500">(Hiển thị đối với mọi đối tượng kể cả khi không được phân quyền)</span></label>
+                      <textarea 
+                        rows={3} 
+                        className="w-full border border-gray-300 p-3 rounded bg-white text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                        value={currentPost.summary}
+                        onChange={e => setCurrentPost({...currentPost, summary: e.target.value})}
+                      ></textarea>
                   </div>
                </div>
 
-               {/* Slug */}
-               <div className="grid grid-cols-12 gap-4 mb-4 items-center">
-                  <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Liên kết tĩnh:</label>
-                  <div className="col-span-12 md:col-span-10 flex gap-2">
-                     <input 
-                        type="text" 
-                        className="flex-1 border border-gray-300 p-2 rounded bg-gray-50 text-gray-600 outline-none"
-                        value={currentPost.slug}
-                        readOnly
-                     />
-                     <button onClick={generateSlug} className="p-2 border border-gray-300 rounded hover:bg-gray-100" title="Tạo lại slug"><RotateCcw size={16}/></button>
-                  </div>
-               </div>
-
-               {/* Thumbnail */}
-               <div className="grid grid-cols-12 gap-4 mb-4 items-center">
-                  <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Hình minh họa:</label>
-                  <div className="col-span-12 md:col-span-10 flex gap-2">
-                     <input 
-                        type="text" 
-                        className="flex-1 border border-gray-300 p-2 rounded bg-white text-gray-900 outline-none"
-                        value={currentPost.thumbnail}
-                        onChange={e => setCurrentPost({...currentPost, thumbnail: e.target.value})}
-                        placeholder="https://..."
-                     />
-                     <label className="bg-cyan-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-cyan-600 text-xs font-bold flex items-center shadow-sm">
-                        <UploadCloud size={16} className="mr-1"/> Browse server
-                        <input type="file" className="hidden" onChange={handleImageUpload}/>
-                     </label>
-                  </div>
-               </div>
-
-               {/* Caption */}
-               <div className="grid grid-cols-12 gap-4 mb-4 items-center">
-                  <label className="col-span-12 md:col-span-2 font-bold text-gray-700">Chú thích cho hình:</label>
-                  <div className="col-span-12 md:col-span-10">
-                     <input 
-                        type="text" 
-                        className="w-full border border-gray-300 p-2 rounded bg-white text-gray-900 outline-none"
-                        value={currentPost.imageCaption || ''}
-                        onChange={e => setCurrentPost({...currentPost, imageCaption: e.target.value})}
-                     />
-                  </div>
-               </div>
-
-               {/* Summary */}
-               <div className="mb-6">
-                  <label className="block font-bold text-gray-700 mb-2">Giới thiệu ngắn gọn <span className="text-xs font-normal italic text-gray-500">(Hiển thị đối với mọi đối tượng kể cả khi không được phân quyền)</span></label>
-                  <textarea 
-                     rows={3} 
-                     className="w-full border border-gray-300 p-3 rounded bg-white text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
-                     value={currentPost.summary}
-                     onChange={e => setCurrentPost({...currentPost, summary: e.target.value})}
-                  ></textarea>
-               </div>
-
-               {/* Content */}
-               <div>
+               {/* 2. Content */}
+               <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
                   <div className="flex justify-between items-end mb-2">
                      <label className="font-bold text-gray-700">Nội dung chi tiết <span className="text-red-500">*</span> <span className="text-xs font-normal italic text-gray-500">(Chỉ hiển thị đối với những đối tượng được phép xem)</span></label>
                      <button onClick={handleGenerateAI} disabled={isGenerating} className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded font-bold border border-purple-200 hover:bg-purple-200 flex items-center">
@@ -306,6 +385,85 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
                          onChange={e => setCurrentPost({...currentPost, content: e.target.value})}
                      />
                   </div>
+               </div>
+
+               {/* 3. Attachments (Moved here for better layout) */}
+               <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
+                  <h4 className="font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
+                      <Paperclip size={18} className="mr-2 text-blue-600"/> Tài liệu đính kèm
+                  </h4>
+                  
+                  {/* Upload Controls */}
+                  <div className="flex flex-col md:flex-row gap-4 mb-4">
+                      <div className="flex rounded border border-gray-300 overflow-hidden h-9">
+                          <button 
+                             onClick={() => setAttachMode('file')}
+                             className={`px-3 text-xs font-bold ${attachMode === 'file' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                          >
+                             Upload File
+                          </button>
+                          <button 
+                             onClick={() => setAttachMode('link')}
+                             className={`px-3 text-xs font-bold ${attachMode === 'link' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                          >
+                             Link Online
+                          </button>
+                      </div>
+
+                      <div className="flex-1">
+                          {attachMode === 'file' ? (
+                              <label className="flex items-center gap-3 cursor-pointer border border-dashed border-gray-300 rounded p-1.5 px-4 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 transition h-9">
+                                  <UploadCloud size={16} className="text-gray-500"/>
+                                  <span className="text-sm text-gray-600">Chọn file từ máy tính...</span>
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    onChange={handleUploadFileAttachment}
+                                  />
+                              </label>
+                          ) : (
+                              <div className="flex gap-2 h-9">
+                                  <input 
+                                    type="text" 
+                                    placeholder="Tên hiển thị..." 
+                                    className="border border-gray-300 rounded px-2 text-sm w-1/3 outline-none focus:border-blue-400"
+                                    value={attachName}
+                                    onChange={e => setAttachName(e.target.value)}
+                                  />
+                                  <input 
+                                    type="text" 
+                                    placeholder="https://..." 
+                                    className="border border-gray-300 rounded px-2 text-sm flex-1 outline-none focus:border-blue-400"
+                                    value={attachUrl}
+                                    onChange={e => setAttachUrl(e.target.value)}
+                                  />
+                                  <button onClick={handleAddLinkAttachment} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700 text-xs font-bold">Thêm</button>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* List */}
+                  {currentPost.attachments && currentPost.attachments.length > 0 ? (
+                      <div className="space-y-2">
+                          {currentPost.attachments.map(att => (
+                              <div key={att.id} className="flex items-center justify-between p-2 border border-gray-200 rounded bg-gray-50 hover:bg-white transition">
+                                  <div className="flex items-center overflow-hidden">
+                                      <FileText size={16} className="text-blue-500 mr-2 flex-shrink-0"/>
+                                      <div className="truncate">
+                                          <div className="text-sm font-medium text-gray-800">{att.name}</div>
+                                          <div className="text-xs text-gray-500 uppercase">{att.fileType || 'FILE'} • {att.type === 'file' ? 'File tải lên' : 'Link ngoài'}</div>
+                                      </div>
+                                  </div>
+                                  <button onClick={() => removeAttachment(att.id)} className="text-gray-400 hover:text-red-500 p-1">
+                                      <X size={16} />
+                                  </button>
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-sm text-gray-400 italic text-center py-2">Chưa có tài liệu đính kèm nào.</p>
+                  )}
                </div>
 
             </div>

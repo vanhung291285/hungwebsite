@@ -18,6 +18,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
   youtube: '',
   website: '',
   showWelcomeBanner: true,
+  homeNewsCount: 6,
+  homeShowProgram: true,
   primaryColor: '#1e3a8a',
   metaTitle: 'Trường học',
   metaDescription: ''
@@ -46,6 +48,8 @@ export const DatabaseService = {
            youtube: data.youtube,
            website: data.website,
            showWelcomeBanner: data.show_welcome_banner,
+           homeNewsCount: data.home_news_count !== undefined ? data.home_news_count : 6,
+           homeShowProgram: data.home_show_program !== undefined ? data.home_show_program : true,
            primaryColor: data.primary_color,
            metaTitle: data.meta_title,
            metaDescription: data.meta_description
@@ -72,6 +76,8 @@ export const DatabaseService = {
        youtube: config.youtube,
        website: config.website,
        show_welcome_banner: config.showWelcomeBanner,
+       home_news_count: config.homeNewsCount,
+       home_show_program: config.homeShowProgram,
        primary_color: config.primaryColor,
        meta_title: config.metaTitle,
        meta_description: config.metaDescription

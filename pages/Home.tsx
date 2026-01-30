@@ -32,8 +32,11 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, config, galle
         filtered = filtered.filter(p => p.category === categorySource);
     }
     
+    // Override itemCount from Global Config if it's the main grid, otherwise use block config
+    const limit = (block.type === 'grid' && config.homeNewsCount > 0) ? config.homeNewsCount : block.itemCount;
+
     // Sort by newest first
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, block.itemCount);
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
   };
 
   const getCategoryBadge = (catSlug: string) => {
@@ -46,6 +49,17 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, config, galle
 
   const renderBlock = (block: DisplayBlock) => {
     if (block.targetPage === 'detail') return null;
+    
+    // --- GLOBAL CONFIG CHECKS ---
+    // 1. Hero Block Check
+    if (block.type === 'hero' && !config.showWelcomeBanner) return null;
+    
+    // 2. Program/Category Block Check (Highlight / List type)
+    if ((block.type === 'highlight' || block.type === 'list') && block.position === 'main' && !config.homeShowProgram) return null;
+
+    // 3. Main News Grid Check (If we wanted to hide it, but user only asked for count config. 
+    //    We can assume if count is 0, it might hide, but the logic handles slice(0,0) which returns empty)
+    
     const blockPosts = getPostsForBlock(block);
     
     // Only render if there are posts (except for HTML/Stats which handle themselves)

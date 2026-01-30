@@ -32,7 +32,7 @@ export const ManageMenu: React.FC<ManageMenuProps> = ({ refreshData }) => {
   const systemPaths = [
      { label: 'Trang chủ', path: 'home' },
      { label: 'Giới thiệu', path: 'intro' },
-     { label: 'Danh sách cán bộ', path: 'staff' }, 
+     { label: 'Đội ngũ Giáo viên', path: 'staff' }, 
      { label: 'Tin tức & Sự kiện', path: 'news' },
      { label: 'Văn bản - Hồ sơ', path: 'documents' },
      { label: 'Tài liệu học tập', path: 'resources' },

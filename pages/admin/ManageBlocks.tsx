@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { DisplayBlock, PostCategory } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { Plus, Trash2, ArrowUp, ArrowDown, Edit2, Check, Eye, EyeOff, Database, Layers } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Edit2, Check, Eye, EyeOff, Database, Layers, Hash } from 'lucide-react';
 
 export const ManageBlocks: React.FC = () => {
   const [blocks, setBlocks] = useState<DisplayBlock[]>([]);
@@ -19,6 +19,7 @@ export const ManageBlocks: React.FC = () => {
   
   const [editingContentId, setEditingContentId] = useState<string | null>(null);
   const [tempContent, setTempContent] = useState('');
+  const [tempItemCount, setTempItemCount] = useState<number>(0);
 
   // Combined options: System options + Dynamic Categories
   const getCategoryOptions = () => {
@@ -108,10 +109,15 @@ export const ManageBlocks: React.FC = () => {
   const startEditContent = (block: DisplayBlock) => {
      setEditingContentId(block.id);
      setTempContent(block.htmlContent || 'all');
+     setTempItemCount(block.itemCount || 5);
   };
 
   const saveContent = async (block: DisplayBlock) => {
-     const updatedBlock = { ...block, htmlContent: tempContent };
+     const updatedBlock = { 
+        ...block, 
+        htmlContent: tempContent,
+        itemCount: tempItemCount
+     };
      await DatabaseService.saveBlock(updatedBlock);
      await loadData();
      setEditingContentId(null);
@@ -156,6 +162,11 @@ export const ManageBlocks: React.FC = () => {
                                         <Layers size={10} className="mr-1"/> {getCategoryName(block.htmlContent)}
                                     </span>
                                 )}
+                                {block.type !== 'html' && block.type !== 'stats' && (
+                                    <span className="flex items-center text-gray-600 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                        <Hash size={10} className="mr-1"/> {block.itemCount}
+                                    </span>
+                                )}
                              </div>
                           </div>
                        </div>
@@ -186,27 +197,47 @@ export const ManageBlocks: React.FC = () => {
                        </div>
                     )}
 
-                    {/* Edit Category Source (Reuse HTML field for category slug) */}
-                    {block.type !== 'html' && block.type !== 'stats' && block.type !== 'docs' && block.isVisible && (
+                    {/* Edit Category Source & Item Count */}
+                    {block.type !== 'html' && block.type !== 'stats' && block.isVisible && (
                         <div className="mt-2 pt-2 border-t border-gray-200">
                             {editingContentId === block.id ? (
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-700">Nguồn tin / Chuyên mục:</label>
-                                    <select 
-                                        className="w-full p-2 text-xs border rounded bg-white text-gray-900 outline-none focus:ring-1 focus:ring-blue-500"
-                                        value={tempContent} 
-                                        onChange={e => setTempContent(e.target.value)}
-                                    >
-                                        {getCategoryOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                    <div className="flex justify-end gap-2">
-                                        <button onClick={() => setEditingContentId(null)} className="text-xs text-gray-500 px-2 py-1 hover:bg-gray-200 rounded">Hủy</button>
-                                        <button onClick={() => saveContent(block)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded flex items-center hover:bg-blue-700 shadow-sm"><Check size={12} className="mr-1"/> Lưu thay đổi</button>
+                                <div className="space-y-3 bg-indigo-50 p-2 rounded">
+                                    {block.type !== 'docs' && (
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-700 block mb-1">Nguồn tin / Chuyên mục:</label>
+                                            <select 
+                                                className="w-full p-1.5 text-xs border rounded bg-white text-gray-900 outline-none focus:ring-1 focus:ring-blue-500"
+                                                value={tempContent} 
+                                                onChange={e => setTempContent(e.target.value)}
+                                            >
+                                                {getCategoryOptions().map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    
+                                    <div>
+                                         <label className="text-xs font-bold text-gray-700 block mb-1">Số lượng hiển thị:</label>
+                                         <div className="flex items-center gap-2">
+                                             <input 
+                                                type="number" 
+                                                min="1" max="50" 
+                                                className="w-20 p-1.5 text-xs border rounded bg-white text-gray-900 font-bold text-center"
+                                                value={tempItemCount}
+                                                onChange={e => setTempItemCount(parseInt(e.target.value))}
+                                             />
+                                             <span className="text-xs text-gray-500">bài viết / mục</span>
+                                         </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-2 pt-1 border-t border-indigo-100">
+                                        <button onClick={() => setEditingContentId(null)} className="text-xs text-gray-500 px-2 py-1 hover:bg-gray-200 rounded font-bold">Hủy</button>
+                                        <button onClick={() => saveContent(block)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded flex items-center hover:bg-blue-700 shadow-sm font-bold"><Check size={12} className="mr-1"/> Lưu thay đổi</button>
                                     </div>
                                 </div>
                             ) : (
-                                <button onClick={() => startEditContent(block)} className="text-xs text-gray-500 flex items-center hover:text-blue-600 font-medium">
-                                    <Edit2 size={12} className="mr-1"/> Đổi chuyên mục: <span className="font-bold ml-1">{getCategoryName(block.htmlContent)}</span>
+                                <button onClick={() => startEditContent(block)} className="text-xs text-gray-500 flex items-center hover:text-blue-600 font-medium group-hover:text-blue-600 transition">
+                                    <Edit2 size={12} className="mr-1"/> 
+                                    {block.type === 'docs' ? 'Cấu hình số lượng hiển thị' : 'Cấu hình Chuyên mục & Số lượng'}
                                 </button>
                             )}
                         </div>
@@ -226,6 +257,7 @@ export const ManageBlocks: React.FC = () => {
             <li>Sử dụng các mũi tên để sắp xếp thứ tự hiển thị của các khối trên trang chủ.</li>
             <li>Tại mục <strong>"Nguồn tin / Chuyên mục"</strong>, hãy chọn đúng loại tin (Ví dụ: Tin tức, Thông báo, Tin nổi bật) để khối hiển thị đúng bài viết mong muốn.</li>
             <li>Nhấn vào biểu tượng con mắt để Ẩn/Hiện khối.</li>
+            <li>Có thể tùy chỉnh <strong>Số lượng tin hiển thị</strong> cho từng khối bằng cách nhấn vào nút "Cấu hình".</li>
         </ul>
       </div>
 
