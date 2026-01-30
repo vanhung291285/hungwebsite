@@ -133,13 +133,18 @@ const App: React.FC = () => {
       const pageParam = searchParams.get('page');
       const idParam = searchParams.get('id');
 
-      // Logic for /admin path (if supported by env)
+      // Logic for /admin path (Now supported with vercel.json)
       if (path === '/admin' || path === '/admin/') {
         setCurrentPage('login'); 
       } 
       // Logic for query params (e.g. ?page=news)
       else if (pageParam) {
-        setCurrentPage(pageParam as PageRoute);
+        if (pageParam === 'admin') {
+            setCurrentPage('login');
+        } else {
+            setCurrentPage(pageParam as PageRoute);
+        }
+        
         if (idParam) setDetailId(idParam);
       } 
       else {
@@ -237,7 +242,7 @@ const App: React.FC = () => {
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     setCurrentPage('admin-dashboard');
-    // Update URL cosmetic
+    // Update URL cosmetic - Use query param to allow refresh
     safePushState('/?page=admin-dashboard');
   };
 
@@ -245,7 +250,7 @@ const App: React.FC = () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setCurrentPage('login');
-    safePushState('/?page=login');
+    safePushState('/admin');
   };
 
   const navigate = (path: string, id?: string) => {
@@ -253,7 +258,7 @@ const App: React.FC = () => {
     if (path.startsWith('admin')) {
        if (!currentUser) {
          setCurrentPage('login');
-         safePushState('/?page=login');
+         safePushState('/admin');
          return;
        }
     }
@@ -268,7 +273,7 @@ const App: React.FC = () => {
     // Update Browser URL for UX (Cosmetic Routing)
     let newUrl = '/';
     if (path === 'home') newUrl = '/';
-    else if (path === 'login') newUrl = '/admin'; // Special case for login
+    else if (path === 'login') newUrl = '/admin'; // RESTORED: /admin URL
     else newUrl = `/?page=${path}${id ? `&id=${id}` : ''}`;
     
     safePushState(newUrl);
