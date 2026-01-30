@@ -28,7 +28,7 @@ import { Dashboard } from './pages/admin/Dashboard';
 import { DatabaseService } from './services/database'; 
 import { supabase } from './services/supabaseClient';
 import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, DisplayBlock, MenuItem, DocumentCategory, StaffMember, IntroductionArticle, PostCategory, Video } from './types';
-import { Loader2, Paperclip, FileText, Download } from 'lucide-react';
+import { Loader2, Paperclip, FileText, Download, Facebook, Share2 } from 'lucide-react';
 
 const FALLBACK_CONFIG: SchoolConfig = {
   name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
@@ -438,6 +438,27 @@ const App: React.FC = () => {
                                 <span>Tác giả: <span className="font-medium text-gray-800">{post.author}</span></span>
                                 <span>|</span>
                                 <span>{post.views} lượt xem</span>
+                              </div>
+
+                              {/* SOCIAL SHARE BUTTONS */}
+                              <div className="flex items-center gap-3 mt-5">
+                                  <span className="text-sm font-bold text-gray-500 uppercase">Chia sẻ:</span>
+                                  <a 
+                                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 px-3 py-1.5 bg-[#1877F2] text-white rounded hover:bg-blue-700 transition text-sm font-bold shadow-sm"
+                                  >
+                                      <Facebook size={16} fill="currentColor"/> Facebook
+                                  </a>
+                                  <a 
+                                      href={`https://zalo.me/share/?url=${encodeURIComponent(window.location.href)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 px-3 py-1.5 bg-[#0068FF] text-white rounded hover:bg-blue-600 transition text-sm font-bold shadow-sm"
+                                  >
+                                      <Share2 size={16} /> Zalo
+                                  </a>
                               </div>
                             </div>
                             
