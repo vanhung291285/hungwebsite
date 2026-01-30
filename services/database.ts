@@ -4,7 +4,7 @@ import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, U
 
 // Default Config Fallback
 const DEFAULT_CONFIG: SchoolConfig = {
-  name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
+  name: 'TRƯỜNG PTDTBT TIỂU HỌC VÀ THCS SUỐI LƯ',
   slogan: 'Dạy tốt - Học tốt - Rèn luyện tốt',
   logoUrl: '',
   bannerUrl: '',
@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: SchoolConfig = {
   homeNewsCount: 6,
   homeShowProgram: true,
   primaryColor: '#1e3a8a',
-  metaTitle: 'Trường PTDTBT TH và THCS Suối Lư',
+  metaTitle: 'Trường PTDTBT TIỂU HỌC VÀ THCS SUỐI LƯ',
   metaDescription: 'Cổng thông tin điện tử Trường Phổ thông dân tộc bán trú Tiểu học và Trung học cơ sở Suối Lư'
 };
 
@@ -519,6 +519,21 @@ export const DatabaseService = {
           role: u.role as UserRole,
           email: u.username + '@school.edu.vn'
       }));
+  },
+
+  // NEW: Get Single User Profile by ID (For checking role on Login)
+  getUserProfile: async (id: string): Promise<User | null> => {
+      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', id).single();
+      
+      if (error || !data) return null;
+
+      return {
+          id: data.id,
+          username: data.username,
+          fullName: data.full_name,
+          role: data.role as UserRole, // Role thực tế từ DB
+          email: '' // Email sẽ được lấy từ session auth object
+      };
   },
 
   saveUser: async (user: User) => {

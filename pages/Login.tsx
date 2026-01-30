@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { DatabaseService } from '../services/database';
 import { Lock, User as UserIcon, GraduationCap, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
@@ -28,13 +30,16 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onNavigate }) => {
       if (error) throw error;
 
       if (data.session) {
+          // Lấy thông tin profile từ DB để xác định quyền
+          const userProfile = await DatabaseService.getUserProfile(data.session.user.id);
+          
           // Construct User object
           const user: User = {
              id: data.session.user.id,
-             username: email.split('@')[0],
+             username: userProfile?.username || email.split('@')[0],
              email: email,
-             fullName: 'Quản trị viên', // Ideally fetch from profile table
-             role: UserRole.ADMIN
+             fullName: userProfile?.fullName || 'Người dùng', 
+             role: userProfile?.role || UserRole.GUEST // Mặc định là Guest nếu không tìm thấy
           };
           onLoginSuccess(user);
       }

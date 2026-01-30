@@ -31,7 +31,7 @@ import { PageRoute, Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlb
 import { Loader2, Paperclip, FileText, Download, Facebook, Share2 } from 'lucide-react';
 
 const FALLBACK_CONFIG: SchoolConfig = {
-  name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
+  name: 'TRƯỜNG PTDTBT TIỂU HỌC VÀ THCS SUỐI LƯ',
   slogan: 'Dạy tốt - Học tốt - Rèn luyện tốt',
   logoUrl: '',
   bannerUrl: '',
@@ -48,7 +48,7 @@ const FALLBACK_CONFIG: SchoolConfig = {
   homeNewsCount: 6,
   homeShowProgram: false,
   primaryColor: '#1e3a8a',
-  metaTitle: 'Trường PTDTBT TH và THCS Suối Lư',
+  metaTitle: 'TRƯỜNG PTDTBT TIỂU HỌC VÀ THCS SUỐI LƯ',
   metaDescription: ''
 };
 
@@ -87,27 +87,29 @@ const App: React.FC = () => {
   useEffect(() => {
     refreshData();
     
-    // Check Supabase Auth
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check Supabase Auth and Get User Role from DB
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+         const userProfile = await DatabaseService.getUserProfile(session.user.id);
          setCurrentUser({
             id: session.user.id,
             email: session.user.email || '',
-            fullName: 'Admin User',
-            username: session.user.email?.split('@')[0] || 'admin',
-            role: UserRole.ADMIN
+            fullName: userProfile?.fullName || 'User',
+            username: userProfile?.username || session.user.email?.split('@')[0] || 'user',
+            role: userProfile?.role || UserRole.GUEST // Use actual role from DB or default to GUEST
          });
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
        if (session) {
+         const userProfile = await DatabaseService.getUserProfile(session.user.id);
          setCurrentUser({
             id: session.user.id,
             email: session.user.email || '',
-            fullName: 'Admin User',
-            username: session.user.email?.split('@')[0] || 'admin',
-            role: UserRole.ADMIN
+            fullName: userProfile?.fullName || 'User',
+            username: userProfile?.username || session.user.email?.split('@')[0] || 'user',
+            role: userProfile?.role || UserRole.GUEST // Use actual role from DB
          });
        } else {
          setCurrentUser(null);
