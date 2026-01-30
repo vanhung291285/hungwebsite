@@ -88,7 +88,8 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, documents, do
                         <span className={`text-white text-xs font-bold px-3 py-1 uppercase rounded mb-3 inline-block shadow-sm ${getCategoryBadge(mainHero.category).color}`}>
                             {block.htmlContent === 'featured' ? 'TIN NỔI BẬT' : getCategoryBadge(mainHero.category).text}
                         </span>
-                        <h2 className="text-white text-2xl md:text-4xl font-extrabold leading-snug mb-3 line-clamp-2 hover:text-yellow-400 transition drop-shadow-md">{mainHero.title}</h2>
+                        {/* Removed line-clamp-2, Reduced text-4xl to text-3xl */}
+                        <h2 className="text-white text-xl md:text-3xl font-extrabold leading-snug mb-3 hover:text-yellow-400 transition drop-shadow-md">{mainHero.title}</h2>
                         <div className="flex items-center text-gray-200 text-sm gap-4 font-medium">
                             <span className="flex items-center gap-2"><Calendar size={16}/> {mainHero.date}</span>
                         </div>
@@ -102,7 +103,8 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, documents, do
                             <img src={sub.thumbnail} alt={sub.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"/>
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
                             <div className="absolute bottom-0 left-0 p-5 w-full">
-                                <h3 className="text-white text-lg font-bold leading-snug line-clamp-2 hover:text-yellow-400 transition drop-shadow-md">{sub.title}</h3>
+                                {/* Removed line-clamp-2, Reduced text-lg to text-base */}
+                                <h3 className="text-white text-base font-bold leading-snug hover:text-yellow-400 transition drop-shadow-md">{sub.title}</h3>
                             </div>
                         </div>
                     ))}
@@ -181,7 +183,8 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, documents, do
                                 {badge.text}
                            </div>
                        </div>
-                       <h4 className="font-bold text-gray-900 text-xl leading-snug mb-3 line-clamp-2 group-hover:text-blue-700 transition">{post.title}</h4>
+                       {/* Removed line-clamp-2, Reduced text-xl to text-lg */}
+                       <h4 className="font-bold text-gray-900 text-lg leading-snug mb-3 group-hover:text-blue-700 transition">{post.title}</h4>
                        <p className="text-base text-gray-600 line-clamp-2 mb-4 flex-grow leading-relaxed">{post.summary}</p>
                        <div className="text-sm text-gray-500 font-medium flex items-center border-t border-gray-100 pt-3 mt-auto">
                            <Clock size={16} className="mr-2 text-gray-400"/> {post.date}
@@ -207,7 +210,8 @@ export const Home: React.FC<HomeProps> = ({ posts, postCategories, documents, do
                            <div key={post.id} onClick={() => onNavigate('news-detail', post.id)} className="flex gap-4 group cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition border border-transparent hover:border-gray-200">
                                <img src={post.thumbnail} className="w-32 h-24 object-cover rounded-md shadow-sm flex-shrink-0 border border-gray-200" alt=""/>
                                <div className="flex-1">
-                                   <h4 className="text-lg font-bold text-gray-900 leading-snug mb-2 group-hover:text-teal-700 line-clamp-2">{post.title}</h4>
+                                   {/* Removed line-clamp-2, Reduced text-lg to text-base */}
+                                   <h4 className="text-base font-bold text-gray-900 leading-snug mb-2 group-hover:text-teal-700">{post.title}</h4>
                                    <div className="text-sm text-gray-600 mb-2 line-clamp-2 leading-relaxed">{post.summary}</div>
                                    <div className="text-xs text-gray-400 font-medium flex items-center"><Calendar size={12} className="mr-1"/> {post.date}</div>
                                </div>

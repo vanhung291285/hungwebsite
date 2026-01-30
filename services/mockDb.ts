@@ -18,24 +18,24 @@ const STORAGE_KEYS = {
 
 const DEFAULT_CONFIG: SchoolConfig = {
   // General
-  name: 'Trường THPT Chuyên Hà Nội - Amsterdam',
-  slogan: 'Trách nhiệm - Yêu thương - Sáng tạo',
-  logoUrl: 'https://upload.wikimedia.org/wikipedia/vi/1/13/Logo_THPT_Chuyen_Ha_Noi_-_Amsterdam.png',
+  name: 'TRƯỜNG PTDTBT TH VÀ THCS SUỐI LƯ',
+  slogan: 'Dạy tốt - Học tốt - Rèn luyện tốt',
+  logoUrl: '',
   faviconUrl: '', 
   bannerUrl: 'https://i.imgur.com/8QZq1jS.jpeg',
-  principalName: 'Trần Thùy Dương',
+  principalName: '',
   
   // Contact
-  address: 'Số 1, Đường Hoàng Minh Giám, Quận Cầu Giấy, Hà Nội',
-  phone: '(024) 38463096',
-  hotline: '0988 123 456',
-  email: 'c3hanoi-ams@hanoiedu.vn',
+  address: 'Xã Suối Lư, Huyện Điện Biên Đông, Tỉnh Điện Biên',
+  phone: '',
+  hotline: '',
+  email: '',
   mapUrl: '',
 
   // Social
   facebook: 'https://facebook.com',
   youtube: 'https://youtube.com',
-  website: 'https://hn-ams.edu.vn',
+  website: '',
 
   // Display
   showWelcomeBanner: true,
@@ -44,8 +44,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
   primaryColor: '#1e3a8a', 
 
   // SEO
-  metaTitle: 'Trường THPT Chuyên Hà Nội - Amsterdam',
-  metaDescription: 'Cổng thông tin điện tử chính thức của Trường THPT Chuyên Hà Nội - Amsterdam.'
+  metaTitle: 'Trường PTDTBT TH và THCS Suối Lư',
+  metaDescription: 'Cổng thông tin điện tử chính thức của Trường PTDTBT TH và THCS Suối Lư.'
 };
 
 const DEFAULT_DOC_CATS: DocumentCategory[] = [
@@ -77,7 +77,7 @@ const DEFAULT_DOCS: SchoolDocument[] = [
 ];
 
 const DEFAULT_VIDEOS: Video[] = [
-  { id: 'v1', title: 'Giới thiệu Trường THPT Chuyên Hà Nội - Amsterdam', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtubeId: 'dQw4w9WgXcQ', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg', isVisible: true, order: 1 }
+  { id: 'v1', title: 'Giới thiệu Trường', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtubeId: 'dQw4w9WgXcQ', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg', isVisible: true, order: 1 }
 ];
 
 const DEFAULT_BLOCKS: DisplayBlock[] = [
@@ -101,7 +101,7 @@ const DEFAULT_BLOCKS: DisplayBlock[] = [
     itemCount: 1, 
     isVisible: true, 
     targetPage: 'all',
-    htmlContent: '<ul class="space-y-2"><li class="border-b pb-1"><a href="#" class="text-blue-700 hover:underline">Bộ Giáo dục & Đào tạo</a></li><li class="border-b pb-1"><a href="#" class="text-blue-700 hover:underline">Sở GD&ĐT Hà Nội</a></li></ul>'
+    htmlContent: '<ul class="space-y-2"><li class="border-b pb-1"><a href="https://moet.gov.vn/" class="text-blue-700 hover:underline" target="_blank">Bộ Giáo dục & Đào tạo</a></li><li class="border-b pb-1"><a href="http://sogddt.dienbien.gov.vn/" class="text-blue-700 hover:underline" target="_blank">Sở GD&ĐT Điện Biên</a></li></ul>'
   },
   { id: 'block_stats', name: 'Thống kê truy cập', position: 'sidebar', type: 'stats', order: 6, itemCount: 1, isVisible: true, targetPage: 'all' },
 ];

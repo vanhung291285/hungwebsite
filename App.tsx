@@ -5,7 +5,7 @@ import { Footer } from './components/Footer';
 import { Sidebar } from './components/Sidebar'; 
 import { AdminLayout } from './components/AdminLayout';
 import { FloatingContact } from './components/FloatingContact'; 
-import { ScrollToTop } from './components/ScrollToTop'; // NEW IMPORT
+import { ScrollToTop } from './components/ScrollToTop'; 
 import { Home } from './pages/Home';
 import { Introduction } from './pages/Introduction';
 import { Documents } from './pages/Documents';
@@ -58,13 +58,14 @@ const App: React.FC = () => {
   
   // Data State
   const [posts, setPosts] = useState<Post[]>([]);
-  const [postCategories, setPostCategories] = useState<PostCategory[]>([]); // New State
+  const [currentDetailPost, setCurrentDetailPost] = useState<Post | null>(null); // New state for full post detail
+  const [postCategories, setPostCategories] = useState<PostCategory[]>([]); 
   const [introductions, setIntroductions] = useState<IntroductionArticle[]>([]); 
   const [documents, setDocuments] = useState<SchoolDocument[]>([]);
   const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]); // NEW VIDEO STATE
+  const [videos, setVideos] = useState<Video[]>([]); 
   const [blocks, setBlocks] = useState<DisplayBlock[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -74,7 +75,6 @@ const App: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Helper to safely update URL without crashing in sandboxes/blobs
   const safePushState = (url: string) => {
     try {
       window.history.pushState({}, '', url);
@@ -114,10 +114,7 @@ const App: React.FC = () => {
        }
     });
 
-    // Handle initial URL mapping
     handleUrlRouting();
-
-    // Listen to browser back/forward buttons
     window.addEventListener('popstate', handleUrlRouting);
 
     return () => {
@@ -133,11 +130,9 @@ const App: React.FC = () => {
       const pageParam = searchParams.get('page');
       const idParam = searchParams.get('id');
 
-      // Logic for /admin path (Now supported with vercel.json)
       if (path === '/admin' || path === '/admin/') {
         setCurrentPage('login'); 
       } 
-      // Logic for query params (e.g. ?page=news)
       else if (pageParam) {
         if (pageParam === 'admin') {
             setCurrentPage('login');
@@ -156,7 +151,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Update Page Title
   useEffect(() => {
     if (config) {
         document.title = config.metaTitle || config.name;
@@ -172,12 +166,33 @@ const App: React.FC = () => {
     }
   }, [config]);
 
-  // Redirect if on login page but already logged in
   useEffect(() => {
     if (currentPage === 'login' && currentUser) {
       setCurrentPage('admin-dashboard');
     }
   }, [currentPage, currentUser]);
+
+  // --- Fetch Full Content when viewing Detail Page ---
+  useEffect(() => {
+      if (currentPage === 'news-detail' && detailId) {
+          // Check if we already have the full content in currentDetailPost
+          if (currentDetailPost?.id === detailId && currentDetailPost.content) return;
+
+          // Check if the post in list has content (unlikely after optimization)
+          const existing = posts.find(p => p.id === detailId);
+          if (existing && existing.content) {
+              setCurrentDetailPost(existing);
+          } else {
+              // Fetch full content
+              setLoading(true);
+              DatabaseService.getPostById(detailId).then(fullPost => {
+                  setCurrentDetailPost(fullPost);
+                  setLoading(false);
+                  if (fullPost) DatabaseService.incrementPostView(detailId);
+              });
+          }
+      }
+  }, [currentPage, detailId, posts]);
 
   const refreshData = async (showLoader: boolean = true) => {
     if (showLoader) setLoading(true);
@@ -198,7 +213,7 @@ const App: React.FC = () => {
             fetchedVideos
         ] = await Promise.all([
             DatabaseService.getConfig().catch(() => FALLBACK_CONFIG),
-            DatabaseService.getPosts().catch(() => []),
+            DatabaseService.getPosts(50).catch(() => []), // LIMIT POSTS to 50 for optimization
             DatabaseService.getDocuments().catch(() => []),
             DatabaseService.getDocCategories().catch(() => []),
             DatabaseService.getGallery().catch(() => []),
@@ -211,7 +226,6 @@ const App: React.FC = () => {
             DatabaseService.getVideos().catch(() => [])
         ]);
 
-        // Nếu database chưa có config (trả về default), override bằng FALLBACK_CONFIG mới nếu tên không khớp
         const finalConfig = fetchedConfig;
         if (finalConfig.name === 'Trường THPT Mẫu') {
              finalConfig.name = FALLBACK_CONFIG.name;
@@ -225,7 +239,7 @@ const App: React.FC = () => {
         setDocCategories(fetchedCats);
         setGalleryImages(fetchedGallery);
         setAlbums(fetchedAlbums);
-        setVideos(fetchedVideos); // Set Video State
+        setVideos(fetchedVideos); 
         setBlocks(fetchedBlocks.filter(b => b.isVisible).sort((a,b) => a.order - b.order));
         setMenuItems(fetchedMenu.sort((a,b) => a.order - b.order));
         setStaffList(fetchedStaff);
@@ -242,7 +256,6 @@ const App: React.FC = () => {
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     setCurrentPage('admin-dashboard');
-    // Update URL cosmetic - Use query param to allow refresh
     safePushState('/?page=admin-dashboard');
   };
 
@@ -254,7 +267,6 @@ const App: React.FC = () => {
   };
 
   const navigate = (path: string, id?: string) => {
-    // Admin check
     if (path.startsWith('admin')) {
        if (!currentUser) {
          setCurrentPage('login');
@@ -264,24 +276,18 @@ const App: React.FC = () => {
     }
 
     if (id) setDetailId(id);
-    // Reset detailId if navigating to a page where ID might be stale but not needed, unless explicitly passed
-    // But for 'documents', we use id as category slug, so keep it.
-    
     setCurrentPage(path as PageRoute);
     window.scrollTo(0, 0);
 
-    // Update Browser URL for UX (Cosmetic Routing)
     let newUrl = '/';
     if (path === 'home') newUrl = '/';
-    else if (path === 'login') newUrl = '/admin'; // RESTORED: /admin URL
+    else if (path === 'login') newUrl = '/admin'; 
     else newUrl = `/?page=${path}${id ? `&id=${id}` : ''}`;
     
     safePushState(newUrl);
   };
 
-  // --- Rendering Logic ---
-
-  if (loading || !config) {
+  if (loading && !config) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
@@ -293,7 +299,7 @@ const App: React.FC = () => {
   }
 
   if (currentPage === 'login') {
-      if (currentUser) return null; // Redirect handled by useEffect
+      if (currentUser) return null;
       return <Login onLoginSuccess={handleLoginSuccess} onNavigate={navigate} />;
   }
 
@@ -332,12 +338,16 @@ const App: React.FC = () => {
     );
   }
 
-  // Public Pages Layout
   const sidebarBlocks = blocks.filter(b => b.position === 'sidebar');
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 font-sans text-slate-900">
       <Header config={config} menuItems={menuItems} onNavigate={navigate} activePath={currentPage} />
+      {loading && config && (
+          <div className="h-1 w-full bg-blue-100 overflow-hidden sticky top-[130px] z-40">
+              <div className="animate-progress w-full h-full bg-blue-600 origin-left-right"></div>
+          </div>
+      )}
       
       <main className="flex-grow w-full">
         {currentPage === 'home' && (
@@ -350,7 +360,7 @@ const App: React.FC = () => {
             gallery={galleryImages}
             blocks={blocks}
             introductions={introductions}
-            staffList={staffList} // Pass Staff List
+            staffList={staffList} 
             onNavigate={navigate} 
           />
         )}
@@ -409,11 +419,15 @@ const App: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8">
                     {(() => {
-                      const post = posts.find(p => p.id === detailId);
+                      const post = currentDetailPost?.id === detailId ? currentDetailPost : posts.find(p => p.id === detailId);
+                      
                       if (!post) return <div className="p-10 text-center bg-white rounded shadow text-lg">Bài viết không tồn tại</div>;
+                      // Fallback content if loading
+                      if (!post.content && !currentDetailPost) return <div className="p-20 text-center"><Loader2 className="animate-spin inline mr-2"/> Đang tải nội dung...</div>;
+
                       const cat = postCategories.find(c => c.slug === post.category);
                       return (
-                        <article className="bg-white p-8 md:p-10 rounded-xl shadow-sm border border-gray-200">
+                        <article className="bg-white p-8 md:p-10 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
                             <div className="mb-8">
                               <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-5">{post.title}</h1>
                               <div className="flex flex-wrap items-center gap-4 text-gray-500 text-sm md:text-base border-b pb-5 border-gray-100">
@@ -471,7 +485,7 @@ const App: React.FC = () => {
                       postCategories={postCategories}
                       documents={documents}
                       docCategories={docCategories}
-                      videos={videos} // Pass Videos
+                      videos={videos} 
                       onNavigate={navigate} 
                       currentPage="news-detail" 
                     />
@@ -510,7 +524,6 @@ const App: React.FC = () => {
 
       </main>
       
-      {/* Floating Contact Widget & Scroll To Top */}
       {config && !currentPage.startsWith('admin') && (
          <>
             <FloatingContact config={config} />

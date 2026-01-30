@@ -161,6 +161,13 @@ export interface StaffMember {
   order: number;
 }
 
+export interface VisitorStats {
+  online: number;
+  today: number;
+  month: number;
+  total: number;
+}
+
 export type PageRoute = 
   | 'home' 
   | 'intro'           

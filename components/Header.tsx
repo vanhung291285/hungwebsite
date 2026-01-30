@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({ config, menuItems, onNavigate, a
              <span className="flex items-center gap-2"><Mail size={14} className="text-yellow-400"/> {config.email}</span>
           </div>
           <div className="flex items-center gap-3">
-             <span className="hidden md:inline opacity-80 italic text-xs lg:text-sm">Cổng thông tin điện tử chính thức</span>
+             <span className="hidden md:inline font-bold uppercase text-xs lg:text-sm tracking-wide">Sở Giáo dục và Đào tạo Điện Biên</span>
              <div className="flex gap-3 ml-2 border-l border-blue-700 pl-3">
                 {config.facebook && <a href={config.facebook} target="_blank" rel="noreferrer" className="hover:text-yellow-300 transform hover:scale-110 transition"><Facebook size={18}/></a>}
                 {config.youtube && <a href={config.youtube} target="_blank" rel="noreferrer" className="hover:text-red-400 transform hover:scale-110 transition"><Youtube size={18}/></a>}

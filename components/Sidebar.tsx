@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { DisplayBlock, Post, SchoolDocument, PostCategory, DocumentCategory, Video } from '../types';
+import { DisplayBlock, Post, SchoolDocument, PostCategory, DocumentCategory, Video, VisitorStats } from '../types';
+import { DatabaseService } from '../services/database';
+import { supabase } from '../services/supabaseClient';
 import { Bell, FileText, Download, Users, Globe, BarChart2, Clock, Calendar, ArrowRightCircle, CircleArrowRight, Eye, X, Maximize2, Star, Folder, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
@@ -14,13 +16,53 @@ interface SidebarProps {
   currentPage: string;
 }
 
-// Sub-component for the Clock/Stats to manage its own timer state
+// Sub-component for the Clock/Stats to manage its own timer state & REAL DATA
 const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
    const [currentTime, setCurrentTime] = useState(new Date());
+   const [stats, setStats] = useState<VisitorStats>({ online: 1, today: 0, month: 0, total: 0 });
 
    useEffect(() => {
+      // 1. Clock Timer
       const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-      return () => clearInterval(timer);
+
+      // 2. Fetch Stats & Track Visit (Once per session)
+      const fetchAndTrack = async () => {
+          // Chỉ tăng view nếu chưa có flag trong Session Storage (Tab hiện tại)
+          if (!sessionStorage.getItem('has_visited')) {
+              await DatabaseService.incrementPageView();
+              sessionStorage.setItem('has_visited', 'true');
+          }
+          
+          // Lấy số liệu từ DB
+          const dbStats = await DatabaseService.getVisitorStats();
+          setStats(prev => ({ ...prev, ...dbStats }));
+      };
+      
+      fetchAndTrack();
+
+      // 3. Realtime Online Presence (Thống kê người đang online thực)
+      const channel = supabase.channel('online-users', {
+        config: {
+          presence: {
+            key: 'user-' + Math.random().toString(36).substr(2, 9),
+          },
+        },
+      });
+
+      channel.on('presence', { event: 'sync' }, () => {
+          const newState = channel.presenceState();
+          const onlineCount = Object.keys(newState).length;
+          setStats(prev => ({ ...prev, online: onlineCount }));
+      }).subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+              await channel.track({ online_at: new Date().toISOString() });
+          }
+      });
+
+      return () => {
+          clearInterval(timer);
+          channel.unsubscribe();
+      };
    }, []);
 
    const formatDate = (date: Date) => {
@@ -29,6 +71,11 @@ const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
 
    const formatTime = (date: Date) => {
       return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date);
+   };
+
+   // Format number with dots (1.234.567)
+   const formatNumber = (num: number) => {
+       return new Intl.NumberFormat('vi-VN').format(num);
    };
 
    return (
@@ -49,23 +96,23 @@ const StatsBlock: React.FC<{ block: DisplayBlock }> = ({ block }) => {
                </div>
             </div>
 
-            {/* Stats List */}
+            {/* Stats List - Using REAL DATA */}
             <ul className="space-y-4 text-base">
                <li className="flex justify-between items-center">
                   <span className="flex items-center text-gray-600"><Users size={18} className="mr-2 text-green-600"/> Đang online:</span>
-                  <span className="font-bold text-gray-800">15</span>
+                  <span className="font-bold text-gray-800 animate-pulse">{formatNumber(stats.online)}</span>
                </li>
                <li className="flex justify-between items-center">
                   <span className="flex items-center text-gray-600"><Clock size={18} className="mr-2 text-orange-500"/> Hôm nay:</span>
-                  <span className="font-bold text-gray-800">350</span>
+                  <span className="font-bold text-gray-800">{formatNumber(stats.today)}</span>
                </li>
                <li className="flex justify-between items-center">
                   <span className="flex items-center text-gray-600"><Calendar size={18} className="mr-2 text-purple-500"/> Tháng này:</span>
-                  <span className="font-bold text-gray-800">9.200</span>
+                  <span className="font-bold text-gray-800">{formatNumber(stats.month)}</span>
                </li>
                <li className="flex justify-between items-center pt-3 border-t border-gray-100 mt-2">
                   <span className="flex items-center text-gray-700 font-bold"><Globe size={18} className="mr-2 text-blue-600"/> Tổng truy cập:</span>
-                  <span className="font-bold text-blue-900 text-lg">1.250.400</span>
+                  <span className="font-bold text-blue-900 text-lg">{formatNumber(stats.total)}</span>
                </li>
             </ul>
          </div>
@@ -346,6 +393,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                                    <img src={mainPost.thumbnail} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" alt=""/>
                                </div>
                            )}
+                           {/* Removed line-clamp-2 */}
                            <h4 className="text-base font-bold text-gray-900 leading-snug mb-2 group-hover:text-red-700">{mainPost.title}</h4>
                            <div className="text-xs text-gray-400 flex items-center mb-2"><Calendar size={12} className="mr-1"/> {mainPost.date}</div>
                            <p className="text-sm text-gray-600 line-clamp-2">{mainPost.summary}</p>
@@ -362,7 +410,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                                    </div>
                                )}
                                <div>
-                                   <h4 className="text-sm font-bold text-gray-800 leading-snug mb-1 group-hover:text-red-700 line-clamp-2">{post.title}</h4>
+                                   {/* Removed line-clamp-2 */}
+                                   <h4 className="text-sm font-bold text-gray-800 leading-snug mb-1 group-hover:text-red-700">{post.title}</h4>
                                    <div className="text-xs text-gray-400">{post.date}</div>
                                </div>
                            </div>
@@ -393,6 +442,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                             <img src={mainPost.thumbnail} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" alt=""/>
                         </div>
                     )}
+                    {/* Removed line-clamp-2 */}
                     <h4 className="text-base font-bold text-blue-900 leading-snug mb-2 group-hover:text-green-700 uppercase">{mainPost.title}</h4>
                     <div className="text-xs text-gray-400 flex items-center mb-2"><Calendar size={12} className="mr-1"/> {mainPost.date}</div>
                     <p className="text-sm text-gray-500 line-clamp-2">{mainPost.summary}</p>
@@ -416,7 +466,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ blocks, posts, postCategories,
                         
                         {/* Title */}
                         <div className="flex-1">
-                            <h4 className="text-sm text-[#2a4e6c] font-bold line-clamp-2 group-hover:text-green-700 leading-snug">
+                            {/* Removed line-clamp-2 */}
+                            <h4 className="text-sm text-[#2a4e6c] font-bold group-hover:text-green-700 leading-snug">
                             {post.title}
                             </h4>
                             <div className="mt-1.5 text-xs text-gray-400">{post.date}</div>

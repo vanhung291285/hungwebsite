@@ -41,7 +41,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ post, onClick }) => {
       </div>
       
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 hover:text-blue-700">
+        {/* Removed line-clamp-2, Reduced text-lg to text-base */}
+        <h3 className="text-base font-bold text-gray-800 mb-2 hover:text-blue-700">
           {post.title}
         </h3>
         <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-grow">

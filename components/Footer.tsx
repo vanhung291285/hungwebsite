@@ -40,8 +40,8 @@ export const Footer: React.FC<FooterProps> = ({ config }) => {
               Liên kết
             </h3>
             <ul className="space-y-3 text-base text-blue-100">
-              <li><a href="#" className="hover:text-white hover:underline transition">Bộ Giáo dục & Đào tạo</a></li>
-              <li><a href="#" className="hover:text-white hover:underline transition">Sở Giáo dục Hà Nội</a></li>
+              <li><a href="https://moet.gov.vn/" target="_blank" rel="noreferrer" className="hover:text-white hover:underline transition">Bộ Giáo dục & Đào tạo</a></li>
+              <li><a href="http://sogddt.dienbien.gov.vn/" target="_blank" rel="noreferrer" className="hover:text-white hover:underline transition">Sở Giáo dục và Đào tạo Điện Biên</a></li>
               <li><a href="#" className="hover:text-white hover:underline transition">Cổng thông tin tuyển sinh</a></li>
               <li><a href="#" className="hover:text-white hover:underline transition">Tài nguyên học tập số</a></li>
             </ul>
@@ -71,7 +71,7 @@ export const Footer: React.FC<FooterProps> = ({ config }) => {
             </div>
             <p className="text-sm text-blue-300 leading-relaxed">
               © {new Date().getFullYear()} Bản quyền thuộc về <span className="font-bold text-white uppercase">{config.name}</span>.<br/>
-              Phát triển bởi VinaEdu CMS.
+              Phát triển bởi Vũ Hùng.
             </p>
           </div>
         </div>

@@ -19,6 +19,7 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   const [isEditing, setIsEditing] = useState(false);
   const [currentPost, setCurrentPost] = useState<Partial<Post>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingContent, setIsLoadingContent] = useState(false); // Loading state for fetch full post
   const [searchTerm, setSearchTerm] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   
@@ -31,10 +32,23 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   // Editor Ref
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleEdit = (post: Post) => {
-    setCurrentPost({ ...post, blockIds: post.blockIds || [], attachments: post.attachments || [] });
-    setTagsInput(post.tags ? post.tags.join(', ') : '');
+  const handleEdit = async (post: Post) => {
     setIsEditing(true);
+    setIsLoadingContent(true);
+    
+    // Fetch FULL content because the list only has summary
+    const fullPost = await DatabaseService.getPostById(post.id);
+    
+    if (fullPost) {
+        setCurrentPost({ ...fullPost, blockIds: fullPost.blockIds || [], attachments: fullPost.attachments || [] });
+        setTagsInput(fullPost.tags ? fullPost.tags.join(', ') : '');
+    } else {
+        // Fallback (rarely happens)
+        setCurrentPost({ ...post, blockIds: post.blockIds || [], attachments: post.attachments || [] });
+        setTagsInput(post.tags ? post.tags.join(', ') : '');
+    }
+    
+    setIsLoadingContent(false);
   };
 
   const handleCreate = () => {
@@ -58,6 +72,7 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
     });
     setTagsInput('');
     setIsEditing(true);
+    setIsLoadingContent(false);
   };
 
   const generateSlug = () => {
@@ -253,7 +268,11 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   );
 
   const handleSave = async () => {
-    if (currentPost.title && currentPost.content) {
+    if (currentPost.title) {
+      // Content could be empty if it hasn't loaded yet, but usually we block UI. 
+      // If isLoadingContent is true, prevent save
+      if (isLoadingContent) return;
+
       const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t !== '');
       
       try {
@@ -261,7 +280,8 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
             ...currentPost,
             tags: tags,
             slug: currentPost.slug || 'no-slug',
-            attachments: currentPost.attachments || []
+            attachments: currentPost.attachments || [],
+            content: currentPost.content || '' // Ensure content is string
         } as Post);
         
         refreshData();
@@ -270,7 +290,7 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
         alert("Lỗi khi lưu bài viết: " + e);
       }
     } else {
-      alert("Vui lòng nhập tiêu đề và nội dung");
+      alert("Vui lòng nhập tiêu đề");
     }
   };
 
@@ -301,6 +321,17 @@ export const ManageNews: React.FC<ManageNewsProps> = ({ posts, categories, refre
   };
 
   if (isEditing) {
+    if (isLoadingContent) {
+        return (
+            <div className="flex justify-center items-center h-screen bg-slate-50">
+                <div className="text-center">
+                    <Loader2 size={48} className="animate-spin text-blue-600 mb-4 mx-auto"/>
+                    <p className="text-gray-600 font-bold">Đang tải nội dung chi tiết...</p>
+                </div>
+            </div>
+        )
+    }
+
     return (
       <div className="bg-slate-50 min-h-screen p-4 animate-fade-in font-sans text-sm">
         <div className="max-w-[1600px] mx-auto">

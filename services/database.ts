@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember, IntroductionArticle, PostCategory, Video } from '../types';
+import { Post, SchoolConfig, SchoolDocument, GalleryImage, GalleryAlbum, User, UserRole, MenuItem, DisplayBlock, DocumentCategory, StaffMember, IntroductionArticle, PostCategory, Video, VisitorStats } from '../types';
 
 // Default Config Fallback
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -83,12 +83,19 @@ export const DatabaseService = {
        meta_description: config.metaDescription
     };
 
-    const { data } = await supabase.from('school_config').select('id').limit(1);
+    const { data, error: selectError } = await supabase.from('school_config').select('id').limit(1);
     
+    if (selectError) throw new Error("Lỗi kết nối CSDL (Select Config): " + selectError.message);
+
+    let result;
     if (data && data.length > 0) {
-       await supabase.from('school_config').update(dbConfig).eq('id', data[0].id);
+       result = await supabase.from('school_config').update(dbConfig).eq('id', data[0].id);
     } else {
-       await supabase.from('school_config').insert(dbConfig);
+       result = await supabase.from('school_config').insert(dbConfig);
+    }
+
+    if (result.error) {
+        throw new Error(result.error.message);
     }
   },
 
@@ -127,15 +134,23 @@ export const DatabaseService = {
       if (error) throw new Error(error.message);
   },
 
-  // --- POSTS ---
-  getPosts: async (): Promise<Post[]> => {
-    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+  // --- POSTS (OPTIMIZED) ---
+  // Lấy danh sách bài viết (KHÔNG lấy nội dung HTML nặng)
+  getPosts: async (limit: number = 100): Promise<Post[]> => {
+    // Select cụ thể các trường cần thiết cho việc hiển thị danh sách, BỎ QUA content và attachments
+    const { data } = await supabase
+        .from('posts')
+        .select('id, title, slug, summary, thumbnail, image_caption, author, date, category, views, status, is_featured, show_on_home, block_ids, tags') 
+        .order('date', { ascending: false }) // Sắp xếp theo ngày người dùng nhập
+        .order('created_at', { ascending: false }) // Fallback
+        .limit(limit);
+
     return (data || []).map((p: any) => ({
       id: p.id,
       title: p.title,
       slug: p.slug,
       summary: p.summary,
-      content: p.content,
+      content: '', // Không tải content ở list view để tối ưu tốc độ
       thumbnail: p.thumbnail,
       imageCaption: p.image_caption,
       author: p.author,
@@ -147,8 +162,43 @@ export const DatabaseService = {
       showOnHome: p.show_on_home,
       blockIds: p.block_ids || [],
       tags: p.tags || [],
-      attachments: p.attachments || []
+      attachments: [] // Không tải attachments ở list view
     }));
+  },
+
+  // Lấy chi tiết 1 bài viết (Bao gồm Content và Attachments)
+  getPostById: async (id: string): Promise<Post | null> => {
+      const { data, error } = await supabase.from('posts').select('*').eq('id', id).single();
+      if (error || !data) return null;
+      
+      return {
+        id: data.id,
+        title: data.title,
+        slug: data.slug,
+        summary: data.summary,
+        content: data.content, // Load Full Content
+        thumbnail: data.thumbnail,
+        imageCaption: data.image_caption,
+        author: data.author,
+        date: data.date,
+        category: data.category,
+        views: data.views,
+        status: data.status,
+        isFeatured: data.is_featured,
+        showOnHome: data.show_on_home,
+        blockIds: data.block_ids || [],
+        tags: data.tags || [],
+        attachments: data.attachments || [] // Load Attachments
+      };
+  },
+
+  incrementPostView: async (id: string) => {
+      // Gọi RPC hoặc update đơn giản (lưu ý: update trực tiếp client side có thể bị race condition nhẹ nhưng chấp nhận được ở mức độ này)
+      // Để tối ưu, chỉ nên gọi cái này sau vài giây người dùng đọc bài
+      const { data } = await supabase.from('posts').select('views').eq('id', id).single();
+      if (data) {
+          await supabase.from('posts').update({ views: (data.views || 0) + 1 }).eq('id', id);
+      }
   },
 
   savePost: async (post: Post) => {
@@ -538,5 +588,52 @@ export const DatabaseService = {
   deleteStaff: async (id: string) => {
     const { error } = await supabase.from('staff_members').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  },
+
+  // --- REAL VISITOR STATISTICS ---
+  // Gọi hàm này khi App load để tăng view (1 lần/session)
+  incrementPageView: async () => {
+      await supabase.rpc('increment_page_view');
+  },
+
+  // Lấy dữ liệu thống kê tổng hợp từ DB
+  getVisitorStats: async (): Promise<VisitorStats> => {
+      try {
+          // Lấy thống kê hôm nay
+          const today = new Date().toISOString().split('T')[0];
+          const { data: todayData } = await supabase
+              .from('daily_stats')
+              .select('visit_count')
+              .eq('date', today)
+              .maybeSingle(); // maybeSingle trả về null nếu không có dòng nào, không lỗi
+
+          const todayCount = todayData ? todayData.visit_count : 0;
+
+          // Lấy thống kê tháng này
+          const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+          const { data: monthData } = await supabase
+              .from('daily_stats')
+              .select('visit_count')
+              .gte('date', startOfMonth);
+          
+          const monthCount = monthData ? monthData.reduce((sum, row) => sum + row.visit_count, 0) : 0;
+
+          // Lấy tổng truy cập (toàn thời gian)
+          const { data: totalData } = await supabase
+              .from('daily_stats')
+              .select('visit_count');
+          
+          const totalCount = totalData ? totalData.reduce((sum, row) => sum + row.visit_count, 0) : 0;
+
+          return {
+              online: 0, // Online tính riêng bằng Realtime Presence bên Frontend
+              today: todayCount,
+              month: monthCount,
+              total: totalCount
+          };
+      } catch (error) {
+          console.error("Error fetching stats:", error);
+          return { online: 0, today: 0, month: 0, total: 0 };
+      }
   }
 };

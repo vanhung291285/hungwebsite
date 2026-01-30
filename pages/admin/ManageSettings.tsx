@@ -14,9 +14,14 @@ export const ManageSettings: React.FC = () => {
 
   const handleSave = async () => {
     if (config) {
-        await DatabaseService.saveConfig(config);
-        alert("Cấu hình đã được lưu thành công! Website sẽ cập nhật ngay lập tức.");
-        window.location.reload(); 
+        try {
+            await DatabaseService.saveConfig(config);
+            alert("Cấu hình đã được lưu thành công! Website sẽ cập nhật ngay lập tức.");
+            window.location.reload(); 
+        } catch (e: any) {
+            console.error(e);
+            alert("Lỗi khi lưu cấu hình: " + e.message + "\n\nNguyên nhân thường gặp: Bạn chưa chạy Script SQL 'db_schema_config.sql' để cấp quyền ghi (Update Policy) hoặc bảng thiếu cột dữ liệu.");
+        }
     }
   };
 
